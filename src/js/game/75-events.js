@@ -343,6 +343,7 @@
       case 'dive': if (loud) AU.swish(0.5); turf(e.x, e.y, 3, 100); break;
       case 'goal': {
         if (loud) AU.duck(0.85, 2.2);
+        netBulge(e.x < W / 2 ? 0 : 1, e.y, lastV ? lastV.ball.z : 30);
         { const gx = e.x < W / 2 ? -GD / 2 : W + GD / 2;
           shockAt(gx, e.y, 40, 0.034, 0.9, 0.7); chromaP = Math.max(chromaP, 1.3);
           for (const gy of [MT - 30, MB + 30]) flashLight(gx, gy, 40, '#ff8a2a', 0.55, 1.5, 1.6);

@@ -290,7 +290,7 @@
   function optsRender() {
     document.querySelectorAll('#opts .seg').forEach(sg => { const k = sg.dataset.k, v = k === 'gore' ? GORE : OPT[k]; sg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(v) === b.dataset.v)); });
     document.querySelectorAll('#opts input[type=range]').forEach(r => { r.value = Math.round(OPT[r.dataset.k] * 100); r.style.setProperty('--v', r.value + '%'); });
-    $('optGfx').textContent = (GPU ? 'Rendu WebGL' : 'WebGL indisponible : rendu 2D') + ' · niveau actuel : ' + TIERN[gfxTier()] + (OPT.gfx === 'auto' ? ' (il s\'adapte tout seul à ton appareil)' : '');
+    $('optGfx').textContent = (GPU ? (POST.soft ? 'GPU logiciel détecté (rendu 2D conseillé)' : 'Rendu WebGL') : 'WebGL indisponible : rendu 2D') + ' · niveau actuel : ' + TIERN[gfxTier()] + (OPT.gfx === 'auto' ? ' (il s\'adapte tout seul à ton appareil)' : '');
   }
   function openOpts() { optsFrom = app.mode === 'menu' ? 'menu' : 'pause'; optsRender(); show('opts'); }
   document.querySelectorAll('#opts .seg button').forEach(b => b.addEventListener('click', e => {

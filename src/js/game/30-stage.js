@@ -14,6 +14,7 @@
   // trois couches : le monde (2D, encré) → composé par le GPU (WebGL) → l'interface par-dessus, jamais déformée
   const glcv = $('gl'), uicv = $('ui'), uictx = uicv.getContext('2d');
   const GPU = POST.init(glcv, cv);
+  if (GPU && POST.soft) gfxAuto = 'perf'; // pas de vrai GPU : en AUTO on reste en rendu 2D direct
   let usePost = false;
   function applyGfx() {
     const t = GFX();

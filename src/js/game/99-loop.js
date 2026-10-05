@@ -34,11 +34,11 @@
   // résolution adaptative : si le téléphone peine, on baisse la définition du canvas
   let pfT = 0, pfN = 0, pfSlow = 0;
   function perfWatch(dt) {
-    if (document.hidden || dt <= 0 || dt >= 0.1) return;
+    if (document.hidden || dt <= 0 || dt >= 0.25) return; // (au-delà : onglet en pause, pas un problème de performance)
     pfT += dt; pfN++;
     if (pfT < 2) return;
     const avg = pfT / pfN; pfT = 0; pfN = 0;
-    pfSlow = avg > 1 / 42 ? pfSlow + 1 : 0;
+    pfSlow = avg > 1 / 42 ? pfSlow + (avg > 1 / 25 ? 2 : 1) : 0; // très lent : on réagit dès la première mesure
     if (pfSlow < 2) return;
     pfSlow = 0;
     // on sacrifie d'abord le superflu : ULTRA → HAUTE, puis la définition, puis le pipeline GPU
@@ -137,5 +137,5 @@
   requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
   // exposé pour les tests automatisés
-  window.__TF = { app, NET, LI, cam, press, startSolo, startHost, startGuest, toMenu, DR, portrait, poseShot, scr: (x, y, z) => [sx(x), sy(y, z), K] };
+  window.__TF = { app, NET, LI, cam, press, startSolo, startHost, startGuest, toMenu, DR, portrait, poseShot, netBulge, OPT, applyGfx, scr: (x, y, z) => [sx(x), sy(y, z), K] };
 })();

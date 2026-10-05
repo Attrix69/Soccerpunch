@@ -22,7 +22,7 @@ var POST = (function () {
     'c+=(texture2D(uTex,vUv+uDir*3.2307692).rgb+texture2D(uTex,vUv-uDir*3.2307692).rgb)*0.0702703;gl_FragColor=vec4(c,1.);}';
   const FS_COMP = HEAD + [
     'uniform sampler2D uScene,uB1,uB2;uniform vec2 uRes;uniform float uAsp,uTime,uBloom,uSat,uCon,uTone,uVig,uGrain,uChroma,uSlow,uGray,uPersp;uniform vec3 uHeat;',
-    'uniform vec4 uFlash;uniform vec4 uShock[' + MAXS + '];uniform vec4 uLight[' + MAXL + '];uniform vec3 uLCol[' + MAXL + '];uniform vec3 uZoom;',
+    'uniform int uNS,uNL;uniform vec4 uFlash;uniform vec4 uShock[' + MAXS + '];uniform vec4 uLight[' + MAXL + '];uniform vec3 uLCol[' + MAXL + '];uniform vec3 uZoom;',
     'vec3 samp(vec2 uv){if(uChroma>0.0004){vec2 o=(uv-0.5)*uChroma;return vec3(texture2D(uScene,uv+o).r,texture2D(uScene,uv).g,texture2D(uScene,uv-o).b);}return texture2D(uScene,uv).rgb;}',
     'vec3 shoulder(vec3 c){vec3 k=vec3(0.78);vec3 e=k+(1.-k)*(1.-exp(-(c-k)/(1.-k)));return mix(c,e,step(k,c));}',
     'void main(){',
@@ -30,14 +30,14 @@ var POST = (function () {
     '  vec2 uv=vUv;float s=1.-uPersp*(1.-uv.y);uv.x=0.5+(uv.x-0.5)*s;uv.y=uv.y-uPersp*uv.y+uPersp*uv.y*uv.y*0.5+uPersp*0.5;',
     // ondes de choc : anneaux qui déforment l'image
     '  vec2 off=vec2(0.);',
-    '  for(int i=0;i<' + MAXS + ';i++){vec4 S=uShock[i];if(S.w<=0.)continue;vec2 d=uv-S.xy;d.x*=uAsp;float r=length(d);float x=(r-S.z)/0.045;float ring=exp(-x*x)*S.w;vec2 n=d/max(r,1e-4);n.x/=uAsp;off+=n*ring;}',
+    '  for(int i=0;i<' + MAXS + ';i++){if(i>=uNS)break;vec4 S=uShock[i];vec2 d=uv-S.xy;d.x*=uAsp;float r=length(d);float x=(r-S.z)/0.045;float ring=exp(-x*x)*S.w;vec2 n=d/max(r,1e-4);n.x/=uAsp;off+=n*ring;}',
     // chaleur : l'air ondule autour des grosses énergies (ultimes, rayon), pas sur tout l'écran
     '  if(uHeat.z>0.){vec2 hd=uv-uHeat.xy;hd.x*=uAsp;float hf=max(0.,1.-length(hd)/0.28);off+=vec2(sin(uv.y*90.+uTime*14.),cos(uv.x*70.+uTime*11.))*0.0022*uHeat.z*hf*hf;}',
     '  vec2 su=uv-off;vec3 col;',
     '  if(uZoom.z>0.001){col=vec3(0.);for(int k=0;k<6;k++){float f=1.-uZoom.z*float(k)/5.;col+=samp(uZoom.xy+(su-uZoom.xy)*f);}col/=6.;}else col=samp(su);',
     // lumières dynamiques : elles éclairent vraiment la pelouse et les joueurs
     '  vec3 lit=vec3(0.);',
-    '  for(int i=0;i<' + MAXL + ';i++){vec4 L=uLight[i];if(L.w<=0.)continue;vec2 d=su-L.xy;d.x*=uAsp;float f=max(0.,1.-length(d)/L.z);lit+=uLCol[i]*(f*f*L.w);}',
+    '  for(int i=0;i<' + MAXL + ';i++){if(i>=uNL)break;vec4 L=uLight[i];vec2 d=su-L.xy;d.x*=uAsp;float f=max(0.,1.-length(d)/L.z);lit+=uLCol[i]*(f*f*L.w);}',
     '  col+=col*lit*1.7+lit*0.08;',
     '  col+=(texture2D(uB1,su).rgb*0.55+texture2D(uB2,su).rgb*0.85)*uBloom;',
     '  col=shoulder(col);',
@@ -52,7 +52,7 @@ var POST = (function () {
     '  gl_FragColor=vec4(clamp(col,0.,1.),1.);}'
   ].join('\n');
 
-  let gl = null, cv = null, src = null, ok = false, lost = false;
+  let gl = null, cv = null, src = null, ok = false, lost = false, soft = false;
   let prog = {}, quad = null, tScene = null, fb = [], W = 0, H = 0, levels = 2;
   const shocks = [], lights = [];
   const U = {}; // emplacements des uniformes par programme
@@ -90,6 +90,7 @@ var POST = (function () {
       gl = cv.getContext('webgl', o) || cv.getContext('experimental-webgl', o);
       if (!gl) return false;
       setup(); ok = true;
+      try { const di = gl.getExtension('WEBGL_debug_renderer_info'); const rn = di ? gl.getParameter(di.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); soft = /swiftshader|llvmpipe|software|softpipe/i.test(String(rn)); } catch (e) { soft = false; }
       cv.addEventListener('webglcontextlost', e => { e.preventDefault(); lost = true; }, false);
       cv.addEventListener('webglcontextrestored', () => { try { setup(); lost = false; } catch (e) { ok = false; } }, false);
     } catch (e) { ok = false; gl = null; }
@@ -145,7 +146,7 @@ var POST = (function () {
     const sv = new Float32Array(MAXS * 4);
     for (let k = shocks.length - 1; k >= 0; k--) { const s = shocks[k]; s.t += p.dt; if (s.t >= s.dur) shocks.splice(k, 1); }
     shocks.forEach((s, k) => { const e = s.t / s.dur; sv[k * 4] = s.x / p.w; sv[k * 4 + 1] = 1 - s.y / p.h; sv[k * 4 + 2] = s.rmax * (1 - Math.pow(1 - e, 2.2)); sv[k * 4 + 3] = s.amp * (1 - e) * (1 - e); });
-    gl.uniform4fv(u('comp', 'uShock[0]'), sv);
+    gl.uniform4fv(u('comp', 'uShock[0]'), sv); gl.uniform1i(u('comp', 'uNS'), shocks.length);
     // lumières : celles du jeu (p.lights) + les flashs éphémères, les plus fortes d'abord
     for (let k = lights.length - 1; k >= 0; k--) { const L = lights[k]; L.life -= p.dt; if (L.life <= 0) lights.splice(k, 1); }
     const all = (p.lights || []).concat(lights.map(L => ({ x: L.x, y: L.y, r: L.r, c: L.c, i: L.i * (L.max ? Math.pow(L.life / L.max, 1.5) : 1) })));
@@ -155,13 +156,14 @@ var POST = (function () {
       const L = all[k]; lv[k * 4] = L.x / p.w; lv[k * 4 + 1] = 1 - L.y / p.h; lv[k * 4 + 2] = L.r / p.h; lv[k * 4 + 3] = L.i;
       lc[k * 3] = L.c[0]; lc[k * 3 + 1] = L.c[1]; lc[k * 3 + 2] = L.c[2];
     }
-    gl.uniform4fv(u('comp', 'uLight[0]'), lv); gl.uniform3fv(u('comp', 'uLCol[0]'), lc);
+    gl.uniform4fv(u('comp', 'uLight[0]'), lv); gl.uniform3fv(u('comp', 'uLCol[0]'), lc); gl.uniform1i(u('comp', 'uNL'), Math.min(MAXL, all.length));
     draw();
     return true;
   }
   return {
     init, resize, render, shock, light,
     get ok() { return ok && !lost; },
+    get soft() { return soft; }, // GPU émulé par le processeur : le pipeline y serait trop lent
     set levels(n) { levels = n; },
     clear() { shocks.length = 0; lights.length = 0; }
   };

@@ -1561,7 +1561,7 @@ var TF = (function () {
       if (deep > 0) {
         if (b.y < MT + BR) { b.y = MT + BR; b.vy = Math.abs(b.vy) * 0.3; }
         if (b.y > MB - BR) { b.y = MB - BR; b.vy = -Math.abs(b.vy) * 0.3; }
-        if (deep > GD - BR) { b.x = side === 0 ? -GD + BR : W + GD - BR; b.vx = sg * Math.abs(b.vx) * 0.15; }
+        if (deep > GD - BR) { b.x = side === 0 ? -GD + BR : W + GD - BR; b.vx = sg * Math.abs(b.vx) * 0.07; b.vy *= 0.45; b.vz *= 0.4; } // le filet absorbe le ballon
         if (b.z > BARZ - BR) { b.z = BARZ - BR; b.vz = -Math.abs(b.vz) * 0.2; }
       } else if (deep > -BR) {
         const inMouth = b.y > MT && b.y < MB;

@@ -100,8 +100,22 @@
     ctx.restore();
   }
 
+  // le filet du fond gonfle sous l'impact puis vibre (ressort amorti)
+  let NETB = null;
+  function netBulge(side, y, z) { NETB = { side, y, z: clamp(z, 16, BARZ - 16), t0: performance.now() }; }
+  function drawNetBulge(side, gx, bxx) {
+    const t = (performance.now() - NETB.t0) / 1000; if (t > 1.6) { NETB = null; return; }
+    const A = t < 0.12 ? 40 * Math.sin(t / 0.12 * Math.PI / 2) : 40 * Math.exp(-(t - 0.12) * 3.2) * Math.cos((t - 0.12) * 15), sg = side ? 1 : -1, sig2 = 2 * 50 * 50; // poussée franche puis rebond amorti
+    const off = (y, z) => A * Math.exp(-((y - NETB.y) * (y - NETB.y) + (z - NETB.z) * (z - NETB.z) * 1.6) / sig2);
+    const y0 = Math.max(MT, NETB.y - 95), y1 = Math.min(MB, NETB.y + 95);
+    ctx.save(); ctx.strokeStyle = 'rgba(240,242,246,.8)'; ctx.lineWidth = Math.max(1, 1.3 * K); ctx.beginPath();
+    for (let y = Math.ceil(y0 / 10) * 10; y <= y1; y += 10) for (let z = 0; z <= BARZ; z += 8) { const x = bxx + sg * off(y, z), X = sx(x), Y = sy(y, z); if (z) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); }
+    for (let z = 10; z <= BARZ; z += 10) for (let y = y0; y <= y1 + 0.1; y += 8) { const x = bxx + sg * off(y, z), X = sx(x), Y = sy(y, z); if (y > y0) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); }
+    ctx.stroke(); ctx.restore();
+  }
   function drawGoal(side) {
     const gx = side ? W : 0, bxx = side ? W + GD : -GD;
+    if (NETB && NETB.side === side) drawNetBulge(side, gx, bxx);
     const P = (x, y, z) => [sx(x), sy(y, z)];
     const line = (a, b) => { ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); };
     ctx.strokeStyle = 'rgba(210,214,222,.26)'; ctx.lineWidth = 1;

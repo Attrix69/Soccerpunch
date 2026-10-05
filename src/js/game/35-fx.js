@@ -137,16 +137,25 @@
     if (chromaP > 0) chromaP = Math.max(0, chromaP - animRealDt * 3);
   }
 
+  const ADD = { spark: 1, fire: 1, bolt: 1 };
   function drawParts() {
-    for (const p of parts) {
+    // deux passes : les particules opaques, puis toutes les lumineuses d'un coup en mode additif
+    // (un seul changement d'état de composition par image au lieu d'un par particule)
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.globalCompositeOperation = pass ? 'lighter' : 'source-over';
+      for (const p of parts) if (!ADD[p.type] === !pass) drawPart(p);
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  function drawPart(p) {
+    {
       const X = sx(p.x), Y = sy(p.y, p.z), a = clamp(p.life / p.max, 0, 1);
+      if (p.type !== 'bolt' && (X < -60 || X > CW + 60 || Y < -60 || Y > CH + 60)) return; // hors écran : rien à dessiner
       switch (p.type) {
         case 'spark': {
-          ctx.globalCompositeOperation = 'lighter';
           ctx.strokeStyle = p.col; ctx.globalAlpha = a; ctx.lineWidth = Math.max(1, p.size * K * 0.6);
           ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X - p.vx * 0.035 * K * cam.flip, Y - (p.vy * TILT - p.vz * ZK) * 0.035 * K); ctx.stroke();
           const rs = p.size * K * 2.2; ctx.globalAlpha = a * 0.7; ctx.drawImage(GLOW(hx(p.col, '#ffd23a')), X - rs, Y - rs, rs * 2, rs * 2);
-          ctx.globalCompositeOperation = 'source-over';
           break;
         }
         case 'puff': {
@@ -158,10 +167,10 @@
           ctx.beginPath(); ctx.arc(X, Y, p.size * K * (1 + (1 - a) * 3), 0, 7); ctx.fill(); break;
         }
         case 'fire': { // flamme lumineuse : halo précalculé en mode additif (effet « bloom »)
-          ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a * 0.9;
+          ctx.globalAlpha = a * 0.9;
           const rf = p.size * K * (0.4 + a * 0.8) * 2.1, col = hx(p.col, '#ff8a1a');
           ctx.drawImage(GLOW(col), X - rf, Y - rf, rf * 2, rf * 2);
-          ctx.globalCompositeOperation = 'source-over'; break;
+          break;
         }
         case 'blood': {
           ctx.fillStyle = p.col; ctx.globalAlpha = Math.min(1, a * 2);
@@ -192,13 +201,13 @@
           ctx.beginPath(); ctx.ellipse(X, Y, r, r * TILT, 0, 0, 7); ctx.stroke(); break;
         }
         case 'bolt': { // éclair qui tombe du ciel (MARTEAU DE THOR)
-          ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round';
+          ctx.lineJoin = 'round';
           for (const [w2, col, al] of [[9, '#6fb8ff', 0.35], [4, '#b8e4ff', 0.7], [1.6, '#ffffff', 1]]) {
             ctx.strokeStyle = col; ctx.globalAlpha = a * al; ctx.lineWidth = w2 * Math.min(K, 1.6); ctx.beginPath();
             for (let k = 0; k < p.pts.length; k++) { const q = p.pts[k]; if (k) ctx.lineTo(sx(q[0]), sy(q[1], q[2])); else ctx.moveTo(sx(q[0]), sy(q[1], q[2])); }
             ctx.stroke();
           }
-          ctx.globalCompositeOperation = 'source-over'; break;
+          break;
         }
         case 'note': { // notes de musique (CRESCENDO)
           ctx.save(); ctx.translate(X, Y); ctx.rotate(p.rot); ctx.globalAlpha = Math.min(1, a * 1.6);
