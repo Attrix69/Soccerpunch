@@ -52,9 +52,9 @@
       const u = easeIO(clamp(1 - DIRC.intro / 3.1, 0, 1));
       tx += (1 - u) * -320 * cam.flip; ty += (1 - u) * -260; zt = lerp(0.78, zt, u); rotT += (1 - u) * 0.012;
     }
-    // 5. ton joueur reste dans le cadre (marge de 22 % autour du centre)
+    // 5. ton joueur reste dans le cadre (jusqu'à 88 % de la demi-largeur : le ballon garde de la place)
     if (me && DIRC.intro <= 0) {
-      const hw = CW / 2 / (S * zt) * 0.78, hh = CH / 2 / (S * zt * TILT) * 0.7;
+      const hw = CW / 2 / (S * zt) * 0.88, hh = CH / 2 / (S * zt * TILT) * 0.8;
       tx = clamp(tx, me.x - hw, me.x + hw); ty = clamp(ty, me.y - hh, me.y + hh);
     }
     const k = 1 - Math.exp(-dt * (s && s.kind === 'ko' ? 6 : 4.2));

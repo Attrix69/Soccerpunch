@@ -363,7 +363,10 @@
         for (let k = 0; k < 4; k++) burst(e.x + rnd2(-20, 20), e.y + rnd2(-60, 60), 60, 20, { sp: 340, vz: 520, col: [T.c1, T.acc, T.c2], type: 'conf', size: 4, life: 2.2, g: 520 });
         break;
       }
-      case 'whistle': if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); } break;
+      case 'whistle': // coup d'envoi : le stade explose
+        if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); AU.boom(0.7); AU.roar(0.7); }
+        if (!demo) { shockAt(W / 2, H / 2, 0, 0.02, 0.6, 0.6); kick(0, 1, 9); flashLight(W / 2, H / 2, 20, '#ffffff', 0.6, 0.9, 0.35); }
+        break;
       case 'golden': if (loud) { AU.whistle(1); showBanner('BUT EN OR', 'le prochain but gagne', '#ffb400', 2.2); AU.roar(0.6); } break;
       case 'end': {
         if (loud) { AU.whistle(2); showBanner('TERMINÉ', '', '#f1efe9', 1.8); AU.roar(0.8); }

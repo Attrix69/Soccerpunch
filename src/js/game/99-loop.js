@@ -1,6 +1,6 @@
   /* =============== BOUCLE =============== */
   const STEP = 1 / 60;
-  let chantT = 12;
+  let chantT = 12, lastTick = 0;
   let last = performance.now(), acc = 0, lastLbl = '', lastP = -1, lastS = -1;
   const demoV = makeView(), hostV = makeView();
 
@@ -105,6 +105,7 @@
     if (app.mode !== 'menu' && !app.drafting) { // la musique monte avec l'enjeu ; le public chante de temps en temps
       MUS.inten = V.golden ? 1 : V.clock < 30 ? 0.85 : V.clock < 60 ? 0.6 : 0.35;
       if (V.phase === 'end' && MUS.mode === 'match') MUS.set('off');
+      if (V.phase === 'play' && !V.golden && V.clock <= 5.2 && V.clock > 0) { const s5 = Math.ceil(V.clock); if (s5 !== lastTick) { lastTick = s5; AU.beep(s5 <= 1 ? 1320 : 880, 0.09); AU.kick(0.35); shake(2); } }
       if (V.phase === 'play' && !app.paused) { chantT -= dt; if (chantT <= 0) { chantT = rnd2(22, 40); AU.chant(); } }
     }
     if (myCtrl >= 0 && V.phase === 'play' && !app.paused) { // ton joueur est en sang : son cœur cogne
@@ -137,5 +138,5 @@
   requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
   // exposé pour les tests automatisés
-  window.__TF = { app, NET, LI, cam, press, startSolo, startHost, startGuest, toMenu, DR, portrait, poseShot, netBulge, OPT, applyGfx, scr: (x, y, z) => [sx(x), sy(y, z), K] };
+  window.__TF = { app, NET, LI, cam, press, startSolo, startHost, startGuest, toMenu, DR, portrait, poseShot, netBulge, OPT, applyGfx, snapshot, onSnap, setFlip, enterGame, scr: (x, y, z) => [sx(x), sy(y, z), K] };
 })();

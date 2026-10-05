@@ -191,7 +191,8 @@
     }
     const t = GFX(), fc = flashCol.split(',');
     PP.w = CW; PP.h = CH; PP.time = now / 1000; PP.dt = rdt;
-    PP.bloom = t.bloom * (1 + 0.5 * clamp(1 - V.ts, 0, 1)); PP.thr = 0.6;
+    const won = V.phase === 'end' && app.mode !== 'menu' && V.winner === app.myTeam;
+    PP.bloom = t.bloom * (1 + 0.5 * clamp(1 - V.ts, 0, 1)) * (won ? 1.35 : 1); PP.thr = won ? 0.52 : 0.6;
     PP.sat = 1.1; PP.con = 1.06; PP.tone = 1; PP.vig = t.vig * (app.mode === 'menu' ? 1.25 : 1); PP.grain = t.grain;
     PP.chroma = Math.min(0.018, chromaP * 0.012 + clamp(1 - V.ts, 0, 1) * 0.005);
     PP.slow = clamp((1 - V.ts) * 1.4, 0, 1); PP.gray = grayT; PP.persp = t.persp;

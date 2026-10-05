@@ -2075,7 +2075,7 @@ var TF = (function () {
     w.phase = 'goal'; w.phaseT = 2.8; w.kickTeam = 1 - team; w.celeTeam = team;
     w.teams[1 - team].bar = Math.min(1, w.teams[1 - team].bar + 0.12);
     w.slowT = 0;
-    if (w.golden) { w.ended = true; w.winner = team; }
+    if (w.golden) { w.ended = true; w.winner = team; w.slowT = 1.1; } // BUT EN OR : le temps se fige sur le but décisif
     for (const p of w.players) { p.chS = false; p.charge = 0; p.chT = false; p.tch = 0; p.aAct = false; if (p.st === ST.hold) p.st = ST.run; }
   }
 
@@ -5672,7 +5672,8 @@ var POST = (function () {
     }
     const t = GFX(), fc = flashCol.split(',');
     PP.w = CW; PP.h = CH; PP.time = now / 1000; PP.dt = rdt;
-    PP.bloom = t.bloom * (1 + 0.5 * clamp(1 - V.ts, 0, 1)); PP.thr = 0.6;
+    const won = V.phase === 'end' && app.mode !== 'menu' && V.winner === app.myTeam;
+    PP.bloom = t.bloom * (1 + 0.5 * clamp(1 - V.ts, 0, 1)) * (won ? 1.35 : 1); PP.thr = won ? 0.52 : 0.6;
     PP.sat = 1.1; PP.con = 1.06; PP.tone = 1; PP.vig = t.vig * (app.mode === 'menu' ? 1.25 : 1); PP.grain = t.grain;
     PP.chroma = Math.min(0.018, chromaP * 0.012 + clamp(1 - V.ts, 0, 1) * 0.005);
     PP.slow = clamp((1 - V.ts) * 1.4, 0, 1); PP.gray = grayT; PP.persp = t.persp;
@@ -5764,9 +5765,9 @@ var POST = (function () {
       const u = easeIO(clamp(1 - DIRC.intro / 3.1, 0, 1));
       tx += (1 - u) * -320 * cam.flip; ty += (1 - u) * -260; zt = lerp(0.78, zt, u); rotT += (1 - u) * 0.012;
     }
-    // 5. ton joueur reste dans le cadre (marge de 22 % autour du centre)
+    // 5. ton joueur reste dans le cadre (jusqu'à 88 % de la demi-largeur : le ballon garde de la place)
     if (me && DIRC.intro <= 0) {
-      const hw = CW / 2 / (S * zt) * 0.78, hh = CH / 2 / (S * zt * TILT) * 0.7;
+      const hw = CW / 2 / (S * zt) * 0.88, hh = CH / 2 / (S * zt * TILT) * 0.8;
       tx = clamp(tx, me.x - hw, me.x + hw); ty = clamp(ty, me.y - hh, me.y + hh);
     }
     const k = 1 - Math.exp(-dt * (s && s.kind === 'ko' ? 6 : 4.2));
@@ -6157,7 +6158,10 @@ var POST = (function () {
         for (let k = 0; k < 4; k++) burst(e.x + rnd2(-20, 20), e.y + rnd2(-60, 60), 60, 20, { sp: 340, vz: 520, col: [T.c1, T.acc, T.c2], type: 'conf', size: 4, life: 2.2, g: 520 });
         break;
       }
-      case 'whistle': if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); } break;
+      case 'whistle': // coup d'envoi : le stade explose
+        if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); AU.boom(0.7); AU.roar(0.7); }
+        if (!demo) { shockAt(W / 2, H / 2, 0, 0.02, 0.6, 0.6); kick(0, 1, 9); flashLight(W / 2, H / 2, 20, '#ffffff', 0.6, 0.9, 0.35); }
+        break;
       case 'golden': if (loud) { AU.whistle(1); showBanner('BUT EN OR', 'le prochain but gagne', '#ffb400', 2.2); AU.roar(0.6); } break;
       case 'end': {
         if (loud) { AU.whistle(2); showBanner('TERMINÉ', '', '#f1efe9', 1.8); AU.roar(0.8); }
@@ -6891,7 +6895,7 @@ var POST = (function () {
 
   /* =============== BOUCLE =============== */
   const STEP = 1 / 60;
-  let chantT = 12;
+  let chantT = 12, lastTick = 0;
   let last = performance.now(), acc = 0, lastLbl = '', lastP = -1, lastS = -1;
   const demoV = makeView(), hostV = makeView();
 
@@ -6996,6 +7000,7 @@ var POST = (function () {
     if (app.mode !== 'menu' && !app.drafting) { // la musique monte avec l'enjeu ; le public chante de temps en temps
       MUS.inten = V.golden ? 1 : V.clock < 30 ? 0.85 : V.clock < 60 ? 0.6 : 0.35;
       if (V.phase === 'end' && MUS.mode === 'match') MUS.set('off');
+      if (V.phase === 'play' && !V.golden && V.clock <= 5.2 && V.clock > 0) { const s5 = Math.ceil(V.clock); if (s5 !== lastTick) { lastTick = s5; AU.beep(s5 <= 1 ? 1320 : 880, 0.09); AU.kick(0.35); shake(2); } }
       if (V.phase === 'play' && !app.paused) { chantT -= dt; if (chantT <= 0) { chantT = rnd2(22, 40); AU.chant(); } }
     }
     if (myCtrl >= 0 && V.phase === 'play' && !app.paused) { // ton joueur est en sang : son cœur cogne
@@ -7028,7 +7033,7 @@ var POST = (function () {
   requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
 
   // exposé pour les tests automatisés
-  window.__TF = { app, NET, LI, cam, press, startSolo, startHost, startGuest, toMenu, DR, portrait, poseShot, netBulge, OPT, applyGfx, scr: (x, y, z) => [sx(x), sy(y, z), K] };
+  window.__TF = { app, NET, LI, cam, press, startSolo, startHost, startGuest, toMenu, DR, portrait, poseShot, netBulge, OPT, applyGfx, snapshot, onSnap, setFlip, enterGame, scr: (x, y, z) => [sx(x), sy(y, z), K] };
 })();
 </script>
 </body>

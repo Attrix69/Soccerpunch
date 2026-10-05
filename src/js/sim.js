@@ -1607,7 +1607,7 @@ var TF = (function () {
     w.phase = 'goal'; w.phaseT = 2.8; w.kickTeam = 1 - team; w.celeTeam = team;
     w.teams[1 - team].bar = Math.min(1, w.teams[1 - team].bar + 0.12);
     w.slowT = 0;
-    if (w.golden) { w.ended = true; w.winner = team; }
+    if (w.golden) { w.ended = true; w.winner = team; w.slowT = 1.1; } // BUT EN OR : le temps se fige sur le but décisif
     for (const p of w.players) { p.chS = false; p.charge = 0; p.chT = false; p.tch = 0; p.aAct = false; if (p.st === ST.hold) p.st = ST.run; }
   }
 

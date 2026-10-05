@@ -1,52 +1,93 @@
 # Tacle Fury
 
-Foot de combat 3 contre 3 (+ gardiens) dans un seul fichier HTML : `index.html`.
-Zéro arbitre, zéro carton, zéro pitié. Solo contre l'IA ou en ligne avec un pote (PeerJS).
+Foot de combat 3 contre 3 (+ gardiens) : zéro arbitre, zéro carton, zéro pitié.
+Solo contre l'IA ou en ligne avec un pote (PeerJS). Tout tient dans **un seul fichier**,
+`index.html`, jouable hors ligne : ouvre-le dans un navigateur (PC, tablette ou téléphone en paysage).
+Pour jouer en ligne, héberge le fichier (GitHub Pages par exemple) et envoie le lien.
 
-Ouvre `index.html` dans un navigateur (mobile en paysage ou PC). Pour jouer en ligne,
-héberge le fichier quelque part (GitHub Pages par exemple) et envoie le lien.
+## Commandes
+
+| Action | Tactile | Clavier | Manette |
+|---|---|---|---|
+| Se déplacer | joystick | ZQSD / flèches | stick gauche / croix |
+| Tir (maintenir) / passe (tap) / frappe | FRAPPE | Espace | A |
+| Tacle (maintenir) / esquive avec ballon | TACLE | K | B ou X |
+| Sprint | SPRINT | Maj | RB / RT / LB |
+| Ki, rayon, ultime | KI | E | Y / LT |
+| Pause | ☰ | Échap | Start |
+| Plein écran | | F | |
+
+## Version 3.0 : refonte « console »
+
+### Rendu
+- **Pipeline WebGL maison** (aucune bibliothèque à charger) au-dessus du rendu 2D encré : bloom sur deux
+  niveaux, **lumières dynamiques** (feu, ki, rayons, impacts, pyrotechnie qui éclairent pelouse et joueurs),
+  **ondes de choc** qui déforment l'image, chaleur autour des ultimes, flou radial, aberration chromatique
+  sur les gros chocs, légère perspective, étalonnage cinéma, ralenti rougi, défaite désaturée, vignette, grain.
+- Trois couches : monde → composition GPU → interface (jamais déformée ni floutée).
+- **Qualité AUTO / ULTRA / HAUTE / PERF**. En AUTO, le jeu baisse tout seul la qualité si l'appareil peine,
+  et reste en rendu 2D direct si le GPU est émulé par le processeur.
+
+### Caméra
+Plan d'ouverture sur la tribune, suivi qui anticipe le jeu, zoom selon la densité de l'action,
+plans courts sur les ultimes, les K.O. brutaux, les buts et la fin du match. Le joueur que tu contrôles
+ne sort jamais du cadre.
+
+### Lisibilité
+Cône et réticule de tir (avec le % de charge), coéquipier qui recevra la passe, crochets rouges sur
+celui que tu vas frapper, « ACHÈVE ! » quand un coup de grâce est possible, portée du tacle chargé,
+**« ! » rouge quand un tacle ou du ki arrive sur toi**, flèche quand le ballon sort de l'écran.
+**Esquive parfaite** (feinte au dernier moment) : ralenti + ki.
+
+### Animation
+Squash & stretch du ballon (étiré par la vitesse, écrasé au rebond) et des corps (tassés à l'impact,
+étirés quand ils sont éjectés), filets qui se creusent au but, perdants qui baissent la tête.
+
+### Interface
+HUD en verre fumé (blasons, score qui « pop », ki en 3 crans, carte du joueur avec portrait, endurance
+et état physique), écran **VS** avant chaque match, transitions d'écrans, logo animé, menus floutés,
+écran **Options**, fin de match animée (compteurs, boucher du match avec portrait, victoire dorée).
+
+### Audio
+Musique procédurale (menu + match dont l'intensité monte en fin de match, au but en or et pendant
+les combos), « ducking » sous les gros chocs, clapping des supporters, sons d'interface, jingles de
+victoire et de défaite, décompte des 5 dernières secondes. Volumes musique / effets réglables.
+
+### Options
+Graphismes, volume musique, volume effets, sang (sans / sang / gore max), vibrations (téléphone et manette),
+secousses de caméra (normales / réduites). Tout est mémorisé.
 
 ## Version 2.0 : l'édition « défouloir »
+Arrêt sur image et silhouette d'impact, caméra qui encaisse, ralenti sur les coups qui détruisent,
+sang sur l'objectif, dents qui sautent ; craquements d'os, cris synthétisés, foule qui réagit ;
+corps qui rebondissent, effet domino, murets, filets ; **coup de grâce** ; blessures visibles
+(coquards, boue, boitement) ; fil des K.O., combos, CARNAGE, bilan du carnage en fin de match.
 
-L'objectif : sentir chaque coup.
+## Développement
 
-### Impacts
-- **Arrêt sur image + silhouette d'impact** : la victime vire au blanc puis au rouge et vibre sous le choc.
-- **Caméra qui encaisse** : recul dans la direction du coup, léger roulis, zoom d'impact, flou radial sur les K.O. brutaux.
-- **Ralenti sur les coups qui détruisent** (fin de combo, patate, tacle assassin, méga rayon, fly-kick…).
-- **Sang sur l'objectif** quand ton joueur se fait démolir (ou quand tu achèves quelqu'un à bout portant).
-- Dents qui sautent, postillons, gerbes de terre.
+Le code source est découpé par domaine dans `src/`, puis assemblé en un seul fichier :
 
-### Son
-- Craquements d'os, claques de chair, corps qui s'écrasent au sol, impacts contre le béton.
-- **Cris de douleur synthétisés** (« HAN ! », « OUGH… », « AAAARGH ! »), plus graves pour les costauds.
-- La foule réagit au massacre (« OOOOH ! ») et les tribunes crépitent de flashs.
-- Réverbération du stade ; le son s'étouffe pendant les ralentis ; ton cœur cogne quand ton joueur est en sang.
+```
+node build.js          # régénère index.html à partir de src/
+node build.js --check  # vérifie que index.html est à jour
+```
 
-### Physique
-- Les corps éjectés **rebondissent et glissent** sur la pelouse en y laissant des traces.
-- **Effet domino** : un joueur projeté renverse tout ce qu'il percute, coéquipiers compris.
-- **Contre les murets** : projeté dans les balustrades, ça fait mal (« ENCASTRÉ ! »).
-- **Au fond des filets** : on peut y envoyer un adversaire.
-- Plus un joueur est amoché, plus il reste longtemps au tapis.
+| Fichier | Rôle |
+|---|---|
+| `src/shell.html`, `src/body.html` | squelette HTML, écrans |
+| `src/css/main.css`, `src/css/premium.css` | styles, animations d'interface |
+| `src/js/sim.js` | simulation pure (règles, physique, IA), sans DOM, partagée hôte/invité |
+| `src/js/post.js` | pipeline de post-traitement WebGL |
+| `src/js/game/05-options.js` | réglages, niveaux graphiques |
+| `src/js/game/10-audio.js`, `12-music.js` | effets sonores, musique procédurale |
+| `src/js/game/20-input.js` | tactile, clavier, manette |
+| `src/js/game/30-stage.js` | stade pré-rendu, couches de canvas |
+| `src/js/game/35-fx.js` | particules, sang, gore, sang sur l'objectif |
+| `src/js/game/40-figure.js` | personnages (squelette pseudo-3D, poses, tenues, blessures) |
+| `src/js/game/45-powers.js`, `50-ball.js` | ki, rayons, ultimes, ballon, cages |
+| `src/js/game/60-hud.js`, `65-guides.js` | HUD, aides de jeu |
+| `src/js/game/70-render.js`, `72-camera.js` | rendu principal, caméra |
+| `src/js/game/75-events.js` | réaction aux événements (sons, effets, caméra) |
+| `src/js/game/80-net.js`, `90-ui.js`, `99-loop.js` | réseau, menus, boucle principale |
 
-### Nouveau coup : le COUP DE GRÂCE
-Un adversaire est à terre près de toi : le bouton FRAPPE devient **ACHÈVE**. Tu le piétines
-(une fois par chute) : il reste au sol plus longtemps, saigne, et ta barre de ki monte.
-
-### Blessures visibles
-Nez en sang, arcade ouverte, **coquard**, œil fermé, bosses, maillot taché de sang,
-**tenue couverte de boue et d'herbe** après chaque chute, **démarche boiteuse** quand on est salement amoché.
-Les blessés sèment des gouttes de sang derrière eux.
-
-### IA plus hargneuse
-Loin du ballon, ça se cogne quand même : règlements de comptes et coups de grâce.
-
-### Présentation
-- **Fil des K.O.** en haut à gauche (qui a démoli qui, et comment).
-- **Compteur de combo** avec paliers : Sauvage, Brutal, Barbare, Inhumain, Apocalypse.
-- **DOUBLE K.O. / TRIPLE K.O. / MASSACRE / CARNAGE** (toute l'équipe adverse au tapis).
-- Écran de fin : **os brisés, coups de grâce, litres de sang versés, boucher du match**.
-- Réglage **Sans sang / Sang / Gore max** dans le menu (mémorisé).
-
-> En ligne, les deux joueurs doivent avoir la même version (2.0) du fichier.
+> En ligne, les deux joueurs doivent avoir la même version (3.0) du fichier.
