@@ -69,6 +69,16 @@
       ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.75; ctx.drawImage(GLOW('#c6ff1a'), X - r * 3, Y - r * 3, r * 6, r * 6); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
       if (R() < 0.8) spawn({ x: b.x, y: b.y, z: b.z, vx: rnd2(-30, 30), vy: rnd2(-30, 30), vz: rnd2(0, 40), g: 0, life: 0.35, max: 0.35, size: rnd2(4, 7), col: pick(['#c6ff1a', '#ffd23a', '#fff']), type: 'fire', rot: 0, vr: 0 });
     }
+    // squash & stretch : étiré dans le sens de la vitesse, écrasé au rebond
+    const vxs = (b.vx || 0) * cam.flip, vys = (b.vy || 0) * TILT - bvz * ZK, vs = len(vxs, vys), st2 = b.owner < 0 ? Math.min(0.3, Math.max(0, vs - 300) / 3200) : 0;
+    ctx.save();
+    if (st2 > 0.01 || BSQ) {
+      const an = Math.atan2(vys, vxs);
+      ctx.translate(X, Y + r * BSQ * 0.8);
+      if (st2 > 0.01) { ctx.rotate(an); ctx.scale(1 + st2, 1 - st2 * 0.55); ctx.rotate(-an); }
+      if (BSQ) ctx.scale(1 + BSQ * 0.7, 1 - BSQ);
+      ctx.translate(-X, -Y);
+    }
     const iron = uk === 'bordee'; // BORDÉE : un vrai boulet de fonte
     const gr = ctx.createRadialGradient(X - r * 0.35, Y - r * 0.4, r * 0.1, X, Y, r * 1.05);
     if (iron) { gr.addColorStop(0, '#9aa0a8'); gr.addColorStop(0.5, '#3a3d44'); gr.addColorStop(1, '#101114'); }
@@ -87,6 +97,7 @@
     ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(X - r * 0.38, Y - r * 0.42, r * 0.28, r * 0.16, -0.6, 0, 7); ctx.fill();
     ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1, K * 1.2); circ(X, Y, r); ctx.stroke();
+    ctx.restore();
   }
 
   function drawGoal(side) {

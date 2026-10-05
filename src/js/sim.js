@@ -972,7 +972,7 @@ var TF = (function () {
       const d = len(o.x - p.x, o.y - p.y);
       if (d < PR * 2 + 8 + p.slideC * 8 + (p.tr.assassin ? 8 : 0)) {
         p.hits.push(o.id);
-        if (o.inv > 0) { ev(w, 'dodge', { x: o.x, y: o.y }); continue; }
+        if (o.inv > 0) { dodged(w, o); continue; }
         if (o.tr.sauterelle && (o.st === ST.run || o.st === ST.hold || o.st === ST.kick || o.st === ST.dash)) { o.inv = Math.max(o.inv, 0.3); ev(w, 'tr', { x: o.x, y: o.y, s: 'sauterelle', id: o.id }); continue; }
         if (o.tr.illusion && R() < 0.5) { o.inv = Math.max(o.inv, 0.25); ev(w, 'tr', { x: o.x, y: o.y, s: 'illusion' }); continue; }
         const ass = !!p.tr.assassin; // TACLE ASSASSIN
@@ -994,6 +994,13 @@ var TF = (function () {
         b.last = p; b.kickBy = p; b.kickT = 0; b.passTo = null; b.sup = 0; p.pickCd = 0.12;
       }
     }
+  }
+
+  // un coup passe dans le vide : pendant une feinte, c'est une ESQUIVE PARFAITE (ralenti + un peu de ki)
+  function dodged(w, o) {
+    const pf = o.st === ST.dash;
+    if (pf) { const tm = w.teams[o.team]; tm.bar = Math.min(1, tm.bar + 0.06); if (tm.human && w.phase === 'play') w.slowT = Math.max(w.slowT, 0.12); }
+    ev(w, 'dodge', { x: o.x, y: o.y, id: o.id, pf: pf ? 1 : 0 });
   }
 
   function flyHits(w, p) {
@@ -1134,7 +1141,7 @@ var TF = (function () {
       if (o.st === ST.fly && o.z > 25) continue;
       const vx = o.x - p.x, vy = o.y - p.y, d = len(vx, vy);
       if (d > reach || (d > 6 && (vx * p.fx + vy * p.fy) / d < 0.2)) continue;
-      if (o.inv > 0) { ev(w, 'dodge', { x: o.x, y: o.y }); continue; }
+      if (o.inv > 0) { dodged(w, o); continue; }
       if (o.tr.illusion && R() < 0.5) { o.inv = Math.max(o.inv, 0.25); ev(w, 'tr', { x: o.x, y: o.y, s: 'illusion' }); continue; }
       if (o.tr.coude && w.ball.owner === o && o.coudeCd <= 0 && (p.x - o.x) * o.fx + (p.y - o.y) * o.fy > 0) { // COUP DE COUDE
         o.coudeCd = 1.8; hit = true; ev(w, 'tr', { x: o.x, y: o.y, s: 'coude' }); stagger(w, p, o, 2); continue;

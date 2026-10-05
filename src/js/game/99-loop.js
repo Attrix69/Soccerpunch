@@ -38,7 +38,12 @@
     if (pfT < 2) return;
     const avg = pfT / pfN; pfT = 0; pfN = 0;
     pfSlow = avg > 1 / 42 ? pfSlow + 1 : 0;
-    if (pfSlow >= 2 && dprCap > 1 && (window.devicePixelRatio || 1) > 1) { dprCap = Math.max(1, Math.min(dprCap, DPR) - 0.5); pfSlow = 0; resize(); }
+    if (pfSlow < 2) return;
+    pfSlow = 0;
+    // on sacrifie d'abord le superflu : ULTRA → HAUTE, puis la définition, puis le pipeline GPU
+    if (OPT.gfx === 'auto' && gfxAuto === 'ultra') { gfxAuto = 'high'; applyGfx(); }
+    else if (dprCap > 1 && DPR > 1) { dprCap = Math.max(1, Math.min(dprCap, DPR) - 0.25); resize(); }
+    else if (OPT.gfx === 'auto' && gfxAuto === 'high') { gfxAuto = 'perf'; applyGfx(); }
   }
   const PV = new Float32Array(27); let pvOk = false;
   function savePrev(w) {
@@ -116,7 +121,7 @@
   }
 
   /* =============== DÉMARRAGE =============== */
-  resize();
+  applyGfx();
   (document.fonts && document.fonts.load ? Promise.race([Promise.all([document.fonts.load('20px Anton'), document.fonts.load('italic 800 16px "Barlow Condensed"')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve())
     .then(() => buildBG()).catch(() => {});
   const inv = (Q.get('code') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);

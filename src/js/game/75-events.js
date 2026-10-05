@@ -10,6 +10,7 @@
   const PUNCH = ['BAM !', 'PAF !', 'POW !', 'CLAC !'];
   /* ---------- fil des K.O., combos, multi-K.O. ---------- */
   const FEED = [], KOW = [], CMB = { n: 0, t: 0, pop: 0, tier: 0 };
+  let celeTeam = -1; // équipe qui célèbre (but, fin de match) : les autres baissent la tête
   const FEEDW = { tackle: 'TACLE', assassin: 'TACLE ASSASSIN', combo: 'COMBO', patate: 'PATATE', boule: 'COUP DE BOULE', fly: 'FLY-KICK', beam: 'MÉGA RAYON', ki: 'BOULE DE KI',
     ball: 'BOULET', gk: 'TIR EN FEU', kamikaze: 'SORTIE KAMIKAZE', charge: "CHARGE D'ÉPAULE", clash: 'DUEL AÉRIEN', body: 'DOMINO', quake: 'SÉISME', zap: 'FOUDRE', stomp: 'COUP DE GRÂCE' };
   const TIERS = [[16, 'APOCALYPSE', '#ff1e1e'], [12, 'INHUMAIN', '#ff2a1e'], [8, 'BARBARE', '#ff5a1e'], [5, 'BRUTAL', '#ff8a1a'], [3, 'SAUVAGE', '#ffb400'], [2, 'COMBO', '#f1efe9']];
@@ -88,6 +89,11 @@
       case 'pass': if (loud) AU.kick(0.3); break;
       case 'super': {
         if (e.i >= 0) { KSHOT[e.i] = performance.now() / 1000; UPK[e.i] = e.uk && UPOSE_K[e.uk] ? e.uk : ''; }
+        { // la frappe déchire l'air : onde de choc, éclair de lumière, la caméra suit le boulet
+          const c = e.uk ? (UCOL[e.uk] || UCOL.upper)[0] : e.u ? '#ff2a3a' : (SIGTXT[e.sig] ? SIGTXT[e.sig][1] : '#ff8a1a');
+          shockAt(e.x, e.y, 20, e.uk ? 0.03 : 0.02, e.uk ? 0.75 : 0.55, e.uk ? 0.55 : 0.4); flashLight(e.x, e.y, 20, c, e.uk ? 0.5 : 0.36, e.uk ? 1.7 : 1.2, e.uk ? 0.55 : 0.35);
+          chromaP = Math.max(chromaP, e.uk ? 1.6 : 1); if (!demo) camShot('ult', 0, 0, e.uk ? 1.12 : 1.06, e.uk ? 2.4 : 0.9, e.uk ? 4 : 3);
+        }
         if (e.uk) { // ULTIME propre au joueur
           ultStart(e, loud);
           if (loud) { AU.whoosh(true); vibe(e.t === me ? [30, 20, 90] : 50); AU.roar(0.7); }
@@ -107,6 +113,7 @@
         break;
       }
       case 'quake': { // SÉISME / la météorite de l'UPPERCUT
+        shockAt(e.x, e.y, 0, 0.03, 0.6, e.m ? 0.55 : 0.45); flashLight(e.x, e.y, 10, e.m ? '#ff9a3c' : '#ffd08a', 0.42, 1.4, 0.45); chromaP = Math.max(chromaP, 1);
         if (loud) { AU.boom(1.2); AU.crunch(0.8); vibe(60); }
         crackMark(e.x, e.y, e.r * 1.1); ring(e.x, e.y, '#d9b27a', e.r * 1.4); ring(e.x, e.y, '#fff1d6', e.r);
         burst(e.x, e.y, 4, 20, { sp: 320, vz: 260, col: ['#7a6248', '#5a4a36', '#9a8466'], type: 'puff', size: 10, life: 0.9, g: 300 });
@@ -116,6 +123,7 @@
         break;
       }
       case 'zap': { // un éclair à chaque virage du MARTEAU DE THOR
+        flashLight(e.x, e.y, 60, '#b8e4ff', 0.5, 1.8, 0.28); shockAt(e.x, e.y, 0, 0.012, 0.35, 0.3);
         if (loud) { AU.nz('highpass', 5000, 900, 0.3, 0.6); AU.boom(0.8); }
         spawn({ x: e.x, y: e.y, z: 0, vx: 0, vy: 0, vz: 0, g: 0, life: 0.28, max: 0.28, size: 1, col: '#fff', type: 'bolt', pts: boltPts(e.x, e.y), rot: 0, vr: 0 });
         ring(e.x, e.y, '#6fb8ff', 90); burst(e.x, e.y, 5, 18, { sp: 300, vz: 200, col: ['#fff', '#6fb8ff', '#b8e4ff'], type: 'spark', size: 3, life: 0.35 });
@@ -153,7 +161,9 @@
         if (txt) floatTxt(e.x, e.y, 60, (e.d >= 7 && R() < 0.5) ? pick(['EN SANG !', 'MASSACRE !', 'DÉFIGURÉ !']) : txt, big || e.d >= 7 ? '#ff2a1e' : '#f1efe9', big ? 34 : 26);
         bleed(e, big ? 1.4 : 1);
         if (real) {
-          stop(big ? 0.15 : 0.07); hitFlash(e.id, big ? 0.16 : 0.1);
+          stop(big ? 0.15 : 0.07); hitFlash(e.id, big ? 0.16 : 0.1); SQ[e.id] = big ? -0.2 : -0.12;
+          flashLight(e.x, e.y, 30, big ? '#ffe2c0' : '#fff6e8', big ? 0.26 : 0.15, big ? 1.1 : 0.55, big ? 0.24 : 0.14);
+          if (big) { shockAt(e.x, e.y, 30, 0.014, 0.45, 0.32); chromaP = Math.max(chromaP, 1); if (!demo) camShot('ko', e.x, e.y, 1.16, 0.55, 2); }
           if (big) { flash = 0.55; flashCol = '255,30,20'; zblur(e.x, e.y, 0.24); }
           if (big || e.d >= 4) { if (R() < 0.75) teeth(e, big && R() < 0.5 ? 2 : 1); }
           spit(e, big ? 10 : 5);
@@ -176,7 +186,7 @@
         if (loud) { AU.thud((0.3 + v * 0.8) * (first ? 1 : 0.6)); if (first && e.id >= 0 && v > 0.45) AU.voice('hurt', LK[e.id] ? 0.95 / LK[e.id].b[0] : 0.9, 0.2); if (first && e.id === myCtrl) vibe(40); }
         burst(e.x, e.y, 2, (3 + v * 9) | 0, { sp: 90 + 140 * v, vz: 50, col: ['#5a4a36', '#6a5a46', '#4a4034'], type: 'puff', size: 6, life: 0.6, g: 0 });
         turf(e.x, e.y, (2 + v * 9) | 0, 110 + 160 * v);
-        if (first) { shake(1 + v * 4); if (e.id >= 0) kick(0, 1, (2 + v * 6) * (loud ? 1 : 0.4)); }
+        if (first) { shake(1 + v * 4); if (e.id >= 0) { kick(0, 1, (2 + v * 6) * (loud ? 1 : 0.4)); SQ[e.id] = 0.18 + 0.15 * v; } if (v > 0.5) shockAt(e.x, e.y, 0, 0.006, 0.3, 0.18); }
         dirty(e.id, 0.1 + 0.12 * v);
         break;
       }
@@ -184,7 +194,7 @@
         const v = clamp(e.v / 600, 0.4, 1.2);
         if (loud) { AU.slam(v); AU.bone(0.9); AU.voice('ko', LK[e.id] ? 1 / LK[e.id].b[0] : 1, 0.3); AU.ooh(1.1); AU.roar(0.5); vibe(e.id === myCtrl ? [90, 40, 140] : 40); }
         floatTxt(e.x, e.y, 56, pick(['ENCASTRÉ !', 'DANS LE DÉCOR !', 'CONTRE LE MURET !']), '#ff6a3a', 30);
-        bleed(e, 1); hitFlash(e.id, 0.13); stop(0.1); shake(9); kick(-(e.dx || 0), -(e.dy || 0), 13 * (loud ? 1 : 0.4)); zblur(e.x, e.y, 0.18);
+        bleed(e, 1); hitFlash(e.id, 0.13); stop(0.1); shake(9); SQ[e.id] = 0.3; shockAt(e.x, e.y, 20, 0.014, 0.4, 0.3); flashLight(e.x, e.y, 20, '#ffffff', 0.22, 0.9, 0.18); chromaP = Math.max(chromaP, 0.8); kick(-(e.dx || 0), -(e.dy || 0), 13 * (loud ? 1 : 0.4)); zblur(e.x, e.y, 0.18);
         burst(e.x, e.y, 20, 14, { sp: 260, vz: 200, col: ['#9a9a9a', '#c9ccd2', '#5a5e66', '#fff'], type: 'spark', size: 3, life: 0.45 });
         burst(e.x, e.y, 18, 8, { sp: 110, vz: 70, col: '#7a7a80', type: 'smoke', size: 9, life: 1, g: -30 });
         impact(e.x, e.y, 30, 72); ring(e.x, e.y, '#ff6a3a', 60);
@@ -196,7 +206,8 @@
         if (loud) { AU.thud(1); AU.flesh(1.1); AU.bone(1.15); AU.crunch(0.9); AU.voice('ko', LK[e.id] ? 1.05 / LK[e.id].b[0] : 1, 0.34); AU.ooh(1.2); AU.roar(0.7); vibe(e.a === me ? [40, 20, 100] : e.v === me ? [100, 30, 160] : 30); }
         floatTxt(e.x, e.y, 52, pick(['COUP DE GRÂCE !', 'ACHEVÉ !', 'PIÉTINÉ !', 'SANS PITIÉ !']), '#ff2a1e', 32); hypeT = performance.now() + 1400;
         bleed({ x: e.x, y: e.y, d: Math.max(e.d || 0, 3), dx: e.dx, dy: e.dy, a: e.a }, 1.5);
-        hitFlash(e.id, 0.15); stop(0.14); shake(8); kick(0, 1, 14 * (loud ? 1 : 0.4)); zblur(e.x, e.y, 0.2);
+        hitFlash(e.id, 0.15); stop(0.14); shake(8); SQ[e.id] = 0.32; shockAt(e.x, e.y, 0, 0.018, 0.5, 0.36); flashLight(e.x, e.y, 10, '#ff5a3a', 0.3, 1.2, 0.3); chromaP = Math.max(chromaP, 1.2);
+        if (!demo) camShot('ko', e.x, e.y, 1.2, 0.7, 3); kick(0, 1, 14 * (loud ? 1 : 0.4)); zblur(e.x, e.y, 0.2);
         flash = Math.max(flash, 0.4); flashCol = '255,30,20';
         impact(e.x, e.y, 6, 72); ring(e.x, e.y, '#ff2a1e', 64); crackMark(e.x, e.y, 44, '#2a0c08'); turf(e.x, e.y, 12, 240);
         burst(e.x, e.y, 4, 10, { sp: 160, vz: 70, col: ['#5a4a36', '#6a5a46'], type: 'puff', size: 7, life: 0.6, g: 0 });
@@ -228,6 +239,7 @@
         break;
       }
       case 'kiboom': {
+        flashLight(e.x, e.y, 30, KICOL[e.t][1], 0.3, 1.3, 0.3); shockAt(e.x, e.y, 30, 0.009, 0.35, 0.22);
         if (loud) { AU.boom(0.7); AU.crunch(0.5); }
         const c = KICOL[e.t];
         burst(e.x, e.y, 30, 22, { sp: 300, vz: 220, col: [c[0], c[1], c[2], '#fff'], type: 'fire', size: 7, life: 0.45, g: 300 });
@@ -239,6 +251,8 @@
       case 'charge': if (loud) AU.charge(); ring(e.x, e.y, KICOL[e.t][1], 50); break;
       case 'beamready': if (loud && e.t === me) { AU.beep(1320, 0.1); floatTxt(e.x, e.y, 95, 'PRÊT !', '#ffd23a', 22); } break;
       case 'beam': {
+        shockAt(e.x, e.y, 30, 0.024, 0.6, 0.5); flashLight(e.x, e.y, 30, KICOL[e.t][0], 0.45, 1.6, 0.5); chromaP = Math.max(chromaP, 1.4);
+        if (!demo) camShot('ko', e.x, e.y, 1.08, 0.6, 2);
         const c = KICOL[e.t];
         if (loud) { AU.beam(); AU.roar(0.9); showBanner('MÉGA RAYON', e.n, c[1], 1.1, 0.5, 0.24); vibe(e.t === me ? [40, 30, 140] : 120); flash = 0.85; flashCol = e.t ? '255,140,40' : '120,220,255'; }
         shake(18); stop(0.1);
@@ -257,7 +271,15 @@
         if (e.ul) { shake(14); flash = 0.6; flashCol = '200,255,60'; ring(e.x, e.y, '#c6ff1a', 90); }
         break;
       case 'deflect': if (loud) AU.kick(0.35); floatTxt(e.x, e.y, 55, 'CONTRÉ !', '#9fd3ff', 22); break;
-      case 'dodge': if (loud) AU.swish(0.6); floatTxt(e.x, e.y, 60, 'ESQUIVÉ !', '#7dff9a', 22); break;
+      case 'dodge': { // ESQUIVE PARFAITE : le coup passe dans le vide
+        const mine = e.id >= 0 && e.id === myCtrl && e.pf;
+        if (loud) { AU.whoosh(false); AU.swish(1); if (mine) { AU.beep(1320, 0.07); vibe(20); } }
+        floatTxt(e.x, e.y, 64, mine ? 'ESQUIVE PARFAITE !' : 'ESQUIVÉ !', '#7dff9a', mine ? 28 : 22);
+        ring(e.x, e.y, '#7dff9a', 60); burst(e.x, e.y, 30, 10, { sp: 200, vz: 80, col: ['#7dff9a', '#ffffff', '#3cc8ff'], type: 'spark', size: 2.5, life: 0.35 });
+        flashLight(e.x, e.y, 30, '#7dff9a', 0.22, 0.8, 0.25);
+        if (mine) { flash = Math.max(flash, 0.25); flashCol = '120,255,170'; }
+        break;
+      }
       case 'tr': {
         const t = TRTXT[e.s]; if (!t) break;
         floatTxt(e.x, e.y, 72, t[0], t[1], e.s === 'berserk' || e.s === 'mur' || e.s === 'tank' || e.s === 'scorpion' || e.s === 'kamikaze' ? 26 : 22);
@@ -320,6 +342,11 @@
       case 'land': turf(e.x, e.y, 5, 120); burst(e.x, e.y, 0, 6, { sp: 110, vz: 40, col: '#5a4a36', type: 'puff', size: 5, life: 0.5, g: 0 }); break;
       case 'dive': if (loud) AU.swish(0.5); turf(e.x, e.y, 3, 100); break;
       case 'goal': {
+        { const gx = e.x < W / 2 ? -GD / 2 : W + GD / 2;
+          shockAt(gx, e.y, 40, 0.034, 0.9, 0.7); chromaP = Math.max(chromaP, 1.3);
+          for (const gy of [MT - 30, MB + 30]) flashLight(gx, gy, 40, '#ff8a2a', 0.55, 1.5, 1.6);
+          flashLight(gx, e.y, 40, '#ffffff', 0.6, 2, 0.4);
+          if (!demo) camShot('goal', e.x < W / 2 ? 120 : W - 120, e.y, 1.16, 2.4, 5); celeTeam = e.t; }
         const mine = e.t === me, T = TEAMS[e.t];
         if (loud) {
           AU.goal();
@@ -336,7 +363,15 @@
       }
       case 'whistle': if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); } break;
       case 'golden': if (loud) { AU.whistle(1); showBanner('BUT EN OR', 'le prochain but gagne', '#ffb400', 2.2); AU.roar(0.6); } break;
-      case 'end': if (loud) { AU.whistle(2); showBanner('TERMINÉ', '', '#f1efe9', 1.8); AU.roar(0.8); } break;
+      case 'end': {
+        if (loud) { AU.whistle(2); showBanner('TERMINÉ', '', '#f1efe9', 1.8); AU.roar(0.8); }
+        if (!demo && lastV) { // la caméra va chercher les vainqueurs
+          const wt = app.world ? app.world.winner : lastV.winner; celeTeam = wt;
+          let x = 0, y = 0; for (let j = 0; j < 4; j++) { const q = lastV.players[(wt >= 0 ? wt : 0) * 4 + j]; x += q.x / 4; y += q.y / 4; }
+          camShot('end', x, y, 1.24, 8, 6);
+        }
+        break;
+      }
     }
   }
 

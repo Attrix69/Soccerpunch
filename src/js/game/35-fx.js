@@ -38,7 +38,7 @@
   let banner = null, flash = 0, flashCol = '255,255,255', hitStop = 0, lastStop = 0;
   // impacts : silhouette blanche de la victime, saleté accumulée, traces de glissade, ralenti du zoom
   const HITT = new Float64Array(8), DIRT = new Float32Array(8), SKX = new Float32Array(8).fill(NaN), SKY = new Float32Array(8);
-  let ghostCol = null, ZB = null, myCtrl = -1;
+  let ghostCol = null, ZB = null, myCtrl = -1, chromaP = 0; // chromaP : aberration chromatique des gros chocs
   // statistiques de violence (affichées en fin de match)
   const VIO = { blood: [0, 0], bones: [0, 0], ko: [0, 0, 0, 0, 0, 0, 0, 0], gr: [0, 0] };
   function vioReset() { VIO.blood = [0, 0]; VIO.bones = [0, 0]; VIO.ko = [0, 0, 0, 0, 0, 0, 0, 0]; VIO.gr = [0, 0]; DIRT.fill(0); SKX.fill(NaN); gore.length = 0; SPL.length = 0; FEED.length = 0; CMB.n = 0; CMB.t = 0; KOW.length = 0; }
@@ -134,6 +134,7 @@
     for (let i = floats.length - 1; i >= 0; i--) { const f = floats[i]; f.life -= dt; f.z += 40 * dt; if (f.life <= 0) floats.splice(i, 1); }
     if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
     if (flash > 0) flash -= dt * 3.5;
+    if (chromaP > 0) chromaP = Math.max(0, chromaP - animRealDt * 3);
   }
 
   function drawParts() {

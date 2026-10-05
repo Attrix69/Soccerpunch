@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const { W, H, GD, BARZ, PR, BR, MT, MB, ST, PH, TEAMS } = TF;
-  const VER = '2.0';
+  const VER = '3.0';
   const PFX = 'tfury26-';
   const $ = id => document.getElementById(id);
   const R = Math.random;
@@ -14,7 +14,7 @@
   const isTouch = matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window);
   const FONT = 'Anton, Impact, "Arial Narrow Bold", sans-serif';
 
-  const cv = $('cv'); let ctx = cv.getContext('2d');
+  const cv = $('cv'); let ctx = cv.getContext('2d', { alpha: false });
   const ctl = $('ctl'), mbtn = $('mbtn');
 
   /* =============== état de l'appli =============== */

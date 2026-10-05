@@ -11,10 +11,25 @@
   const sx = x => CW / 2 + cam.flip * (x - cam.x) * K + cam.sx;
   const sy = (y, z) => CH / 2 + ((y - cam.y) * TILT - (z || 0) * ZK) * K + cam.sy;
 
+  // trois couches : le monde (2D, encré) → composé par le GPU (WebGL) → l'interface par-dessus, jamais déformée
+  const glcv = $('gl'), uicv = $('ui'), uictx = uicv.getContext('2d');
+  const GPU = POST.init(glcv, cv);
+  let usePost = false;
+  function applyGfx() {
+    const t = GFX();
+    usePost = GPU && t.post;
+    POST.levels = t.levels || 1;
+    glcv.style.display = usePost ? 'block' : 'none';
+    cv.style.display = usePost ? 'none' : 'block';
+    $('vig').style.display = usePost ? 'none' : ''; // la vignette passe dans le shader
+    resize();
+  }
   function resize() {
-    DPR = Math.min(dprCap, window.devicePixelRatio || 1);
+    DPR = Math.min(dprCap, GFX().dpr, window.devicePixelRatio || 1);
     CW = window.innerWidth; CH = window.innerHeight;
     cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+    uicv.width = cv.width; uicv.height = cv.height;
+    if (usePost) POST.resize(cv.width, cv.height);
     S = Math.max(0.36, Math.min(CW / 1030, CH / (660 * TILT))); // caméra reculée : on voit plus de terrain
     const cs = getComputedStyle($('sa'));
     SAFE.t = parseFloat(cs.paddingTop) || 0; SAFE.r = parseFloat(cs.paddingRight) || 0;

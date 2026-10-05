@@ -7,7 +7,8 @@
   const stPrev = new Int8Array(8).fill(-1), stT = new Float32Array(8);
   let curBar = [0, 0];
   const ghosts = [[], [], [], [], [], [], [], []];
-  let ballSpin = 0, pbx = 0, pby = 0;
+  let ballSpin = 0, pbx = 0, pby = 0, pbz = 0, bvz = 0, BSQ = 0; // BSQ : écrasement du ballon au rebond
+  const SQ = new Float32Array(8); // squash (>0 : tassé) / stretch (<0 : étiré) de chaque joueur
   const trail = [], strail = [];
   let strailCol = '#e8ecf2';
   const STY = [0, 1, 4, 2, 5, 6, 3, 2]; // coiffure par joueur
@@ -474,6 +475,15 @@
         break;
       }
     }
+    // l'équipe qui vient d'encaisser (ou qui a perdu) baisse la tête : mains sur les genoux, sur la tête, bras ballants
+    const dej = !ghost && st === ST.run && celeTeam >= 0 && team !== celeTeam && lastV && (lastV.phase === 'goal' || lastV.phase === 'end') && !app.drafting;
+    if (dej) {
+      const v = (i + (lastV.phase === 'end' ? 1 : 0)) % 3, br = Math.sin(now * 1.6 + i) * 0.04;
+      if (v === 0) { lean = 0.72 + br; spread = 2.5; L0.a = 0.35; L0.b = 0.65; L1.a = 0.3; L1.b = 0.6; A0.a = 0.92; A0.b = 0.15; A0.o = 0.15; A1.a = 0.88; A1.b = 0.15; A1.o = 0.15; } // mains sur les genoux
+      else if (v === 1) { lean = -0.04 + br; spread = 1.2; A0.a = 2.55; A0.b = 2.3; A0.o = 0.55; A1.a = 2.5; A1.b = 2.3; A1.o = 0.55; L0.a = 0.05; L0.b = 0.1; L1.a = -0.05; L1.b = 0.12; } // mains sur la tête
+      else { lean = 0.3 + br; spread = 1; A0.a = -0.05; A0.b = 0.12; A0.o = 0.05; A1.a = -0.08; A1.b = 0.12; A1.o = 0.05; L0.a = 0.08; L0.b = 0.15; L1.a = -0.05; L1.b = 0.15; } // effondré
+      mouth = 0;
+    }
     // gestes spéciaux du gardien (scorpion, poing, sortie kamikaze, blindé)
     const gp = gk && GKP[i] && now - GKP[i][1] < GKPD[GKP[i][0]] && st !== ST.down ? GKP[i][0] : '';
     switch (gp) {
@@ -488,7 +498,7 @@
     if (glide > 0) hipD += (-26.4 - hipD) * glide;  // glisse : le bassin ne monte ni ne descend
     hipD -= lift;
     if (!ghost) { // fondu enchaîné entre l'ancienne pose et la nouvelle (easing doux)
-      const S2 = PSB[i], key = st * 8 + (p.chg > 0 ? 2 : p.chg < 0 ? 4 : 0) + (st === ST.down && !DGR[i] && p.z > 3 ? 1 : 0) + ((st === ST.volley || st === ST.head) && AHIT[i] ? 1 : 0) + (st === ST.volley && p.z > 5 ? 2 : 0) + (gp ? 6000 + gp.length : 0);
+      const S2 = PSB[i], key = st * 8 + (p.chg > 0 ? 2 : p.chg < 0 ? 4 : 0) + (st === ST.down && !DGR[i] && p.z > 3 ? 1 : 0) + ((st === ST.volley || st === ST.head) && AHIT[i] ? 1 : 0) + (st === ST.volley && p.z > 5 ? 2 : 0) + (gp ? 6000 + gp.length : 0) + (dej ? 3000 : 0);
       srot = Math.atan2(Math.sin(srot), Math.cos(srot)); // angle ramené dans [-π, π] pour un fondu au plus court
       const tv = [lean, hipD, spread, L0.a, L0.b, L1.a, L1.b, A0.a, A0.b, A1.a, A1.b, roll, tw, srot, A0.o, A0.p, A1.o, A1.p];
       if (!S2.init) { S2.init = true; S2.key = key; S2.cur = tv.slice(); S2.t = 1; S2.dur = 0.1; }
@@ -559,7 +569,8 @@
     const OC = (v, far) => { const c = v === 'c1' ? tcol : v === 'c2' ? C.s : v === 'acc' ? C.a : v; return far ? dkc(c) : c; };
     const GH = ghost ? (ghostCol || C.j) : null;
 
-    ctx.save(); ctx.translate(X, Y); ctx.scale(K * BU[0], K * BU[0]);
+    const sq = i < 8 && !app.drafting ? SQ[i] : 0; // squash & stretch : le corps se tasse à l'impact, s'étire quand il est éjecté
+    ctx.save(); ctx.translate(X, Y); ctx.scale(K * BU[0] * (1 + sq * 0.55), K * BU[0] * (1 - sq));
     if (srot) { ctx.translate(0, hipD); ctx.rotate(srot); ctx.translate(0, -hipD); }
     if (ghost) ctx.globalAlpha = ghost;
     else if (p.inv && ((performance.now() / 70) | 0) % 2) ctx.globalAlpha = 0.45;

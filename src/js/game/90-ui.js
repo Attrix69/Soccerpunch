@@ -31,7 +31,7 @@
     ctl.classList.add('on'); mbtn.classList.add('on');
     app.endShown = false; app.paused = false; parts.length = 0; floats.length = 0; banner = null; app.lastCount = -1;
     if (stains.length) { stains.length = 0; buildBG(); }
-    vioReset(); ZB = null;
+    vioReset(); ZB = null; POST.clear(); camIntro(); celeTeam = -1;
     lastLbl = ''; AU.ambient(true); wake();
     requestAnimationFrame(layoutButtons);
   }
