@@ -1,5 +1,5 @@
   /* =============== UI =============== */
-  const SCR = ['menu', 'lobby', 'joining', 'help', 'pause', 'end', 'netm', 'draft'];
+  const SCR = ['menu', 'lobby', 'joining', 'help', 'pause', 'end', 'netm', 'draft', 'opts'];
   function show(id) { for (const s of SCR) $(s).classList.toggle('on', s === id); }
   function hideScr(id) { $(id).classList.remove('on'); }
   function hideAll() { for (const s of SCR) $(s).classList.remove('on'); }
@@ -26,13 +26,31 @@
   async function wake() { try { if ('wakeLock' in navigator && !wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); } } catch (e) { wl = null; } }
   function unwake() { try { if (wl) wl.release(); } catch (e) { /* rien */ } wl = null; }
 
+  /* ---------- écran VS : les deux équipes se font face avant le coup d'envoi ---------- */
+  let vsT = 0;
+  const rgba = (h, a) => { const n = parseInt(hx(h, '#ffffff').slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  function showVS(picks) {
+    const el = $('vs'); if (!picks || !picks[0] || !picks[1]) return;
+    const me = app.myTeam, op = 1 - me;
+    const side = (cls, t) => {
+      const box = el.querySelector(cls), who = t === me ? (app.mode === 'solo' ? 'TON ÉQUIPE' : 'TOI') : (app.mode === 'solo' ? "L'IA" : 'TON POTE');
+      box.querySelector('.vsn').innerHTML = `<small>${who}</small>${TEAMS[t].name}`;
+      box.querySelector('.vsp').innerHTML = picks[t].map((id, k) => id >= 0 ? `<figure style="animation-delay:${(0.28 + k * 0.07).toFixed(2)}s"><img alt="" src="${portrait(id, t)}"><figcaption>${TF.ROSTER[id].name}</figcaption></figure>` : '').join('');
+    };
+    side('.vsl', me); side('.vsr', op);
+    el.style.setProperty('--c0', rgba(TEAMS[me].c1, 0.5)); el.style.setProperty('--c1', rgba(TEAMS[op].c1, 0.5));
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    clearTimeout(vsT); vsT = setTimeout(() => el.classList.remove('on'), 2800);
+    AU.whoosh(true); setTimeout(() => { AU.boom(1.1); AU.crunch(0.8); AU.roar(0.8); vibe(40); }, 470);
+  }
   function enterGame() {
     hideAll();
     ctl.classList.add('on'); mbtn.classList.add('on');
     app.endShown = false; app.paused = false; parts.length = 0; floats.length = 0; banner = null; app.lastCount = -1;
     if (stains.length) { stains.length = 0; buildBG(); }
     vioReset(); ZB = null; POST.clear(); camIntro(); celeTeam = -1;
-    lastLbl = ''; AU.ambient(true); wake();
+    showVS(app.world ? app.world.picks : NET.role === 'guest' ? [DR.opp.slice(), DR.mine.slice()] : null);
+    lastLbl = ''; AU.ambient(true); MUS.set('match'); wake();
     requestAnimationFrame(layoutButtons);
   }
   function startSolo(picks, aiPicks) {
@@ -42,14 +60,14 @@
     const ai = aiPicks || TF.randomPicks(mine);
     app.world = TF.newWorld({ human: [true, false], diff: app.diff, picks: [mine, ai] });
     enterGame();
-    setTimeout(() => toast('En face : ' + ai.map(i => TF.ROSTER[i].name).join(' · ')), 400);
   }
   function toMenu() {
     netLeave(); app.drafting = false; DR.on = false;
     app.mode = 'menu'; app.world = null; app.paused = false; setFlip(1);
     ctl.classList.remove('on'); mbtn.classList.remove('on');
     for (const k of ['A', 'B', 'C', 'D']) press(k, false); resetJoy(); ptr.clear();
-    show('menu'); AU.ambient(false); unwake(); banner = null;
+    show('menu'); AU.ambient(false); MUS.set('menu'); unwake(); banner = null;
+    $('vs').classList.remove('on');
   }
   function togglePause() {
     if (app.mode === 'menu') return;
@@ -65,22 +83,35 @@
   }
   function resumeGame() { hideScr('pause'); app.paused = false; }
 
+  function countUp(root) { // les chiffres défilent jusqu'à leur valeur, ligne après ligne
+    root.querySelectorAll('[data-n]').forEach(el => {
+      const n = +el.dataset.n, dec = +(el.dataset.dec || 0), suf = el.dataset.suf || '', t0 = performance.now() + (+el.dataset.t || 0) * 1000;
+      el.textContent = (0).toFixed(dec) + suf;
+      const tick = now => { const u = clamp((now - t0) / 600, 0, 1), e = 1 - Math.pow(1 - u, 3); el.textContent = (n * e).toFixed(dec) + suf; if (u < 1) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    });
+  }
   function showEnd(V) {
     const me = app.myTeam, op = 1 - me, win = V.winner === me;
+    $('end').classList.toggle('win', win); $('end').classList.toggle('lose', !win);
+    AU.fanfare(win);
     $('endRes').textContent = win ? (app.mode === 'solo' ? 'VICTOIRE !' : 'T\'AS GAGNÉ !') : (app.mode === 'solo' ? 'DÉFAITE…' : 'T\'AS PERDU…');
     $('endRes').style.color = win ? '#f1efe9' : '#ff2a1e';
     $('endSc').innerHTML = `<span style="color:${TEAMS[me].c1}">${V.score[me]}</span> - <span style="color:${TEAMS[op].c1}">${V.score[op]}</span>`;
     const L = ['Tirs', 'Super tirs', 'Buts', 'Tacles réussis', 'K.O. infligés', 'Passes réussies'];
     let h = `<div class="l" style="color:${TEAMS[me].c1}">${TEAMS[me].name}</div><div class="m"></div><div class="r" style="color:${TEAMS[op].c1}">${TEAMS[op].name}</div>`;
-    for (const i of [2, 0, 1, 3, 4, 5]) h += `<div class="l">${V.stats[me][i]}</div><div class="m">${L[i]}</div><div class="r">${V.stats[op][i]}</div>`;
+    let row = 0;
+    const line = (a, lab, b, cls, dec, suf) => { const t = (0.5 + row++ * 0.09).toFixed(2), n = (v, c) => `<div class="${c}${cls ? ' ' + cls : ''}" style="animation-delay:${t}s"${typeof v === 'number' ? ` data-n="${v}" data-t="${t}" data-dec="${dec || 0}" data-suf="${suf || ''}"` : ''}>${v}</div>`;
+      h += n(a, 'l') + `<div class="m" style="animation-delay:${t}s">${lab}</div>` + n(b, 'r'); };
+    for (const i of [2, 0, 1, 3, 4, 5]) line(V.stats[me][i], L[i], V.stats[op][i]);
     // bilan du carnage
-    const lit = t => (GORE ? VIO.blood[t].toFixed(1) + ' L' : '—');
-    h += `<div class="l v">${VIO.bones[me]}</div><div class="m">Os brisés</div><div class="r v">${VIO.bones[op]}</div>`;
-    h += `<div class="l v">${VIO.gr[me] || 0}</div><div class="m">Coups de grâce</div><div class="r v">${VIO.gr[op] || 0}</div>`;
-    h += `<div class="l v">${lit(me)}</div><div class="m">Sang versé</div><div class="r v">${lit(op)}</div>`;
+    line(VIO.bones[me], 'Os brisés', VIO.bones[op], 'v');
+    line(VIO.gr[me] || 0, 'Coups de grâce', VIO.gr[op] || 0, 'v');
+    if (GORE) line(+VIO.blood[me].toFixed(1), 'Sang versé', +VIO.blood[op].toFixed(1), 'v', 1, ' L'); else line('—', 'Sang versé', '—', 'v');
     let bi = -1, bk = 0; for (let i = 0; i < 8; i++) if (VIO.ko[i] > bk) { bk = VIO.ko[i]; bi = i; }
-    if (bi >= 0) h += `<div class="mvp">BOUCHER DU MATCH : <b style="color:${TEAMS[bi >> 2].c1}">${LK[bi].name}</b> · ${bk} K.O.</div>`;
-    $('endStats').innerHTML = h;
+    if (bi >= 0) { const rid = V.pk && V.pk[bi >> 2] ? V.pk[bi >> 2][bi & 3] : -1;
+      h += `<div class="mvp" style="animation-delay:${(0.55 + row * 0.09).toFixed(2)}s">${rid >= 0 ? `<img alt="" src="${portrait(rid, bi >> 2)}">` : ''}<span>BOUCHER DU MATCH : <b style="color:${TEAMS[bi >> 2].c1}">${LK[bi].name}</b> · ${bk} K.O.</span></div>`; }
+    $('endStats').innerHTML = h; countUp($('endStats'));
     $('endStatus').textContent = ''; $('endAgain').disabled = false;
     if (app.mode === 'host') rematchStatus(NET.rmH, NET.rmG);
     show('end');
@@ -113,10 +144,15 @@
     g.fillStyle = 'rgba(0,0,0,.55)'; g.beginPath(); g.ellipse(Wp / 2, Hp - 12, 40, 9, 0, 0, 7); g.fill();
     const slot = team * 4 + DR_ROLES.indexOf(TF.ROSTER[id].role);
     const sc = ctx, sk = K, sf = cam.flip, sl = LK[slot];
+    // on dessine avec le moteur du jeu sans perturber le joueur qui occupe ce poste en match
+    const keep = { ps: Object.assign({}, PSB[slot]), fa: FA[slot], sp: spd[slot], sh: SHF[slot], ax: SAX[slot], ay: SAY[slot], st: stT[slot], tr: TRL[slot].slice(), sq: SQ[slot] };
     ctx = g; K = 2.5; cam.flip = 1; LK[slot] = makeLook(id, team);
-    PSB[slot].init = false; FA[slot] = NaN; spd[slot] = 0; SHF[slot] = 0; SAX[slot] = 0; SAY[slot] = 0; stT[slot] = 0; TRL[slot].length = 0;
+    PSB[slot].init = false; FA[slot] = NaN; spd[slot] = 0; SHF[slot] = 0; SAX[slot] = 0; SAY[slot] = 0; stT[slot] = 0; TRL[slot].length = 0; SQ[slot] = 0;
     try { figure({ st: 0, fx: back ? -0.5 : 0.55, fy: back ? -0.86 : 0.84, z: 0, dmg: 0, inv: 0, chg: 0, spin: 0, x: 0, y: 0 }, slot, Wp / 2, Hp - 12, 0); }
-    finally { ctx = sc; K = sk; cam.flip = sf; LK[slot] = sl; lkKey = ''; PSB[slot].init = false; FA[slot] = NaN; }
+    finally {
+      ctx = sc; K = sk; cam.flip = sf; LK[slot] = sl; lkKey = '';
+      Object.assign(PSB[slot], keep.ps); FA[slot] = keep.fa; spd[slot] = keep.sp; SHF[slot] = keep.sh; SAX[slot] = keep.ax; SAY[slot] = keep.ay; stT[slot] = keep.st; TRL[slot].length = 0; TRL[slot].push(...keep.tr); SQ[slot] = keep.sq;
+    }
     return (portraits[key] = c.toDataURL());
   }
   function poseShot(id, team, o) { // (outil de test) un joueur dans une pose donnée
@@ -226,7 +262,7 @@
   }, 700);
   $('drCards').addEventListener('click', e => {
     const b = e.target.closest('.drCard'); if (!b) return;
-    AU.init(); AU.click();
+    AU.init(); AU.ui('pick');
     const id = +b.dataset.id; DR.view = id; drPick(DR.tab, id);
   });
   document.querySelectorAll('.drTab').forEach(b => b.addEventListener('click', e => {
@@ -234,24 +270,47 @@
   }));
 
   // boutons de l'interface
-  const on = (id, f) => $(id).addEventListener('click', e => { e.preventDefault(); AU.init(); AU.click(); f(e); });
+  const BACK = { joinBack: 1, lobCancel: 1, drBack: 1, optOk: 1, pQuit: 1, endMenu: 1, netMenu: 1 };
+  const on = (id, f) => $(id).addEventListener('click', e => { e.preventDefault(); AU.init(); AU.ui(BACK[id] ? 'back' : 'ok'); f(e); });
+  // survol (souris) : petit tic sonore, comme dans un menu de console
+  let hovT = 0;
+  document.addEventListener('pointerover', e => {
+    if (e.pointerType !== 'mouse' || !e.target.closest) return;
+    const el = e.target.closest('.mb, .chip, .seg button, .drCard, .drTab, .link'); if (!el || el === document.__hov) return;
+    document.__hov = el; const t = performance.now(); if (t - hovT > 45) { hovT = t; AU.ui('hover'); }
+  });
   on('goSolo', () => openDraft(false));
   document.querySelectorAll('#chips .chip').forEach(c => c.addEventListener('click', () => {
     AU.init(); AU.click(); app.diff = c.dataset.d;
     document.querySelectorAll('#chips .chip').forEach(x => x.classList.toggle('on', x === c));
   }));
-  const gchips = () => document.querySelectorAll('#gchips .chip').forEach(x => x.classList.toggle('on', +x.dataset.g === GORE));
-  document.querySelectorAll('#gchips .chip').forEach(c => c.addEventListener('click', () => {
-    AU.init(); GORE = +c.dataset.g; try { localStorage.setItem('tf_gore', String(GORE)); } catch (e) { /* rien */ }
-    gchips(); if (GORE) AU.splat(); else AU.click();
-    if (!GORE && stains.length) { stains.length = 0; buildBG(); }
+  /* ---------- OPTIONS : tout s'applique immédiatement ---------- */
+  let optsFrom = 'menu';
+  const TIERN = { ultra: 'ULTRA', high: 'HAUTE', perf: 'PERFORMANCE' };
+  function optsRender() {
+    document.querySelectorAll('#opts .seg').forEach(sg => { const k = sg.dataset.k, v = k === 'gore' ? GORE : OPT[k]; sg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(v) === b.dataset.v)); });
+    document.querySelectorAll('#opts input[type=range]').forEach(r => { r.value = Math.round(OPT[r.dataset.k] * 100); r.style.setProperty('--v', r.value + '%'); });
+    $('optGfx').textContent = (GPU ? 'Rendu WebGL' : 'WebGL indisponible : rendu 2D') + ' · niveau actuel : ' + TIERN[gfxTier()] + (OPT.gfx === 'auto' ? ' (il s\'adapte tout seul à ton appareil)' : '');
+  }
+  function openOpts() { optsFrom = app.mode === 'menu' ? 'menu' : 'pause'; optsRender(); show('opts'); }
+  document.querySelectorAll('#opts .seg button').forEach(b => b.addEventListener('click', e => {
+    e.preventDefault(); AU.init();
+    const k = b.parentElement.dataset.k, v = b.dataset.v;
+    if (k === 'gore') { GORE = +v; try { localStorage.setItem('tf_gore', v); } catch (_) { /* rien */ } if (!GORE && stains.length) { stains.length = 0; buildBG(); } if (GORE) AU.splat(); else AU.click(); }
+    else if (k === 'gfx') { OPT.gfx = v; gfxAuto = isTouch ? 'high' : 'ultra'; dprCap = 2; applyGfx(); AU.click(); }
+    else { OPT[k] = +v; AU.click(); if (k === 'vib' && OPT.vib) vibe(30); if (k === 'shake' && OPT.shake) shake(10); }
+    saveOpts(); optsRender();
   }));
-  gchips();
+  document.querySelectorAll('#opts input[type=range]').forEach(r => {
+    r.addEventListener('input', () => { OPT[r.dataset.k] = r.value / 100; r.style.setProperty('--v', r.value + '%'); AU.vol(); saveOpts(); });
+    r.addEventListener('change', () => { AU.init(); if (r.dataset.k === 'sfx') { AU.punch(2); AU.flesh(0.8); } });
+  });
+  on('goOpts', openOpts); on('pOpts', openOpts); on('optOk', () => show(optsFrom));
   on('goHost', () => { goFull(); startHost(); });
   on('goJoin', () => { goFull(); startGuest($('codeIn').value); });
   $('codeIn').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4); });
   on('goHelp', () => show('help'));
-  on('helpOk', () => { if (app.mode === 'menu') show('menu'); else show('pause'); });
+  on('helpOk', () => { if (app.mode === 'menu') show('menu'); else show('pause'); AU.ui('back'); });
   on('lobCancel', () => { toMenu(); });
   on('lobShare', async () => {
     const link = shareLink(NET.code);

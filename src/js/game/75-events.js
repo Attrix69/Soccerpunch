@@ -20,7 +20,7 @@
     const now = performance.now();
     CMB.n = now - CMB.t < 1900 ? CMB.n + 1 : 1; CMB.t = now; CMB.pop = now;
     const tr = tierOf(CMB.n);
-    if (tr >= 0 && tr < 5 && (CMB.tier < 0 || tr < CMB.tier)) { AU.beep(520 + (5 - tr) * 140, 0.09); if (tr <= 2) AU.roar(0.5); }
+    if (tr >= 0 && tr < 5 && (CMB.tier < 0 || tr < CMB.tier)) { AU.beep(520 + (5 - tr) * 140, 0.09); if (tr <= 2) AU.roar(0.5); MUS.boost = Math.min(0.6, MUS.boost + 0.25); }
     CMB.tier = tr;
   }
   function regKO(e, big) {
@@ -39,17 +39,17 @@
   let lastV = null, animRealDt = 0.016, hbT = 0, hypeT = 0;
   function drawFeed() {
     if (!FEED.length) return;
-    const x0 = 12 + SAFE.l, y0 = 58 + SAFE.t, rh = 21, dt = animRealDt;
+    const xr = CW - 12 - SAFE.r, y0 = 50 + SAFE.t + ((app.mode === 'host' || app.mode === 'guest') ? 6 : 0), rh = 21, dt = animRealDt; // à droite, sous le score
     ctx.save(); ctx.textBaseline = 'middle';
     for (let k = FEED.length - 1; k >= 0; k--) { FEED[k].t -= dt; if (FEED[k].t <= 0) FEED.splice(k, 1); }
     FEED.forEach((f, k) => {
       const y = y0 + k * (rh + 3), al = clamp(f.t / 0.5, 0, 1), ent = clamp((4.6 - f.t) / 0.12, 0, 1);
-      ctx.globalAlpha = al; const xo = x0 - (1 - ent) * 40;
+      ctx.globalAlpha = al;
       const an = f.a >= 0 ? LK[f.a].name : '—', vn = LK[f.v] ? LK[f.v].name : '?';
       ctx.font = `italic 800 13px ${UIF}`;
       const w1 = ctx.measureText(an).width, w3 = ctx.measureText(vn).width;
       ctx.font = `12px ${FONT}`; const w2 = ctx.measureText(f.w).width + 14;
-      const tw = w1 + w2 + w3 + 26;
+      const tw = w1 + w2 + w3 + 26, xo = xr - tw + (1 - ent) * 40;
       ctx.fillStyle = 'rgba(8,8,10,.82)'; para(xo, y, tw, rh, 6); ctx.fill();
       ctx.fillStyle = f.a >= 0 ? TEAMS[f.a >> 2].c1 : '#888'; ctx.fillRect(xo + 6, y + rh - 2, 3, 2);
       ctx.font = `italic 800 13px ${UIF}`; ctx.textAlign = 'left';
@@ -66,7 +66,7 @@
     const now = performance.now(), age = now - CMB.t;
     if (CMB.n < 2 || age > 1900) { if (age > 1900) { CMB.n = 0; CMB.tier = -1; } return; }
     const tr = tierOf(CMB.n), T = TIERS[tr], pop = clamp((now - CMB.pop) / 140, 0, 1), sc = 1 + (1 - pop) * 0.45;
-    const al = clamp((1900 - age) / 400, 0, 1), x = CW - 24 - SAFE.r, y = CH * 0.3, s = Math.min(CH * 0.11, 64) * sc;
+    const al = clamp((1900 - age) / 400, 0, 1), x = CW - 24 - SAFE.r, y = Math.max(CH * 0.3, 168 + SAFE.t), s = Math.min(CH * 0.11, 64) * sc;
     ctx.save(); ctx.globalAlpha = al; ctx.translate(x, y); ctx.rotate(-0.06); ctx.transform(1, 0, -0.2, 1, 0, 0);
     ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
     ctx.font = `${s | 0}px ${FONT}`; const txt = 'x' + CMB.n;
@@ -96,7 +96,7 @@
         }
         if (e.uk) { // ULTIME propre au joueur
           ultStart(e, loud);
-          if (loud) { AU.whoosh(true); vibe(e.t === me ? [30, 20, 90] : 50); AU.roar(0.7); }
+          if (loud) { AU.whoosh(true); vibe(e.t === me ? [30, 20, 90] : 50); AU.roar(0.7); AU.duck(0.7, 1.2); }
           flash = 0.85; stop(0.16); shake(20);
           burst(e.x, e.y, 12, 8, { sp: 120, vz: 80, col: '#1c1a1a', type: 'smoke', size: 7, life: 0.9, g: -40 }); turf(e.x, e.y, 8, 200);
           break;
@@ -154,7 +154,7 @@
           if (real && (big || e.d >= 5)) AU.bone(big ? 1.1 : 0.8);
           if (real) AU.voice(big || e.d >= 6 ? 'ko' : 'hurt', LK[e.id] ? 1.08 / LK[e.id].b[0] : 1, 0.3);
           if (e.v === me) vibe(big ? [90, 30, 170] : [60, 30, 110]); else if (e.a === me) vibe(big ? 55 : 35);
-          if (big) { AU.roar(0.6); AU.ooh(e.d >= 7 ? 1.25 : 0.9); }
+          if (big) { AU.roar(0.6); AU.ooh(e.d >= 7 ? 1.25 : 0.9); AU.duck(0.55, 0.45); }
         }
         if (big) hypeT = performance.now() + 1200;
         const txt = e.kd === 'kamikaze' ? 'DÉCOUPÉ !' : e.kd === 'assassin' ? 'TACLE ASSASSIN !' : e.kd === 'patate' ? 'PATATE DE FORAIN !' : e.kd === 'boule' ? 'COUP DE BOULE !' : e.kd === 'charge' ? 'CHARGE DU BULLDOZER !' : e.kd === 'clash' ? 'DUEL AÉRIEN !' : e.kd === 'fly' ? 'K.O. !' : e.kd === 'gk' ? 'GARDIEN K.O. !' : e.kd === 'ball' ? 'SMASH !' : e.kd === 'gkp' || e.kd === 'body' ? '' : e.kd === 'combo' ? 'COMBO K.O. !' : e.kd === 'ki' ? 'BOOM !' : e.kd === 'beam' ? 'PULVÉRISÉ !' : pick(HITS);
@@ -203,7 +203,7 @@
         break;
       }
       case 'stomp': { // COUP DE GRÂCE
-        if (loud) { AU.thud(1); AU.flesh(1.1); AU.bone(1.15); AU.crunch(0.9); AU.voice('ko', LK[e.id] ? 1.05 / LK[e.id].b[0] : 1, 0.34); AU.ooh(1.2); AU.roar(0.7); vibe(e.a === me ? [40, 20, 100] : e.v === me ? [100, 30, 160] : 30); }
+        if (loud) { AU.duck(0.6, 0.5); AU.thud(1); AU.flesh(1.1); AU.bone(1.15); AU.crunch(0.9); AU.voice('ko', LK[e.id] ? 1.05 / LK[e.id].b[0] : 1, 0.34); AU.ooh(1.2); AU.roar(0.7); vibe(e.a === me ? [40, 20, 100] : e.v === me ? [100, 30, 160] : 30); }
         floatTxt(e.x, e.y, 52, pick(['COUP DE GRÂCE !', 'ACHEVÉ !', 'PIÉTINÉ !', 'SANS PITIÉ !']), '#ff2a1e', 32); hypeT = performance.now() + 1400;
         bleed({ x: e.x, y: e.y, d: Math.max(e.d || 0, 3), dx: e.dx, dy: e.dy, a: e.a }, 1.5);
         hitFlash(e.id, 0.15); stop(0.14); shake(8); SQ[e.id] = 0.32; shockAt(e.x, e.y, 0, 0.018, 0.5, 0.36); flashLight(e.x, e.y, 10, '#ff5a3a', 0.3, 1.2, 0.3); chromaP = Math.max(chromaP, 1.2);
@@ -342,6 +342,7 @@
       case 'land': turf(e.x, e.y, 5, 120); burst(e.x, e.y, 0, 6, { sp: 110, vz: 40, col: '#5a4a36', type: 'puff', size: 5, life: 0.5, g: 0 }); break;
       case 'dive': if (loud) AU.swish(0.5); turf(e.x, e.y, 3, 100); break;
       case 'goal': {
+        if (loud) AU.duck(0.85, 2.2);
         { const gx = e.x < W / 2 ? -GD / 2 : W + GD / 2;
           shockAt(gx, e.y, 40, 0.034, 0.9, 0.7); chromaP = Math.max(chromaP, 1.3);
           for (const gy of [MT - 30, MB + 30]) flashLight(gx, gy, 40, '#ff8a2a', 0.55, 1.5, 1.6);

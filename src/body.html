@@ -26,17 +26,12 @@
         <button class="chip on" data-d="normal">Normal</button>
         <button class="chip" data-d="hard">Brutal</button>
       </div>
-      <div class="chips" id="gchips">
-        <button class="chip" data-g="0">Sans sang</button>
-        <button class="chip" data-g="1">Sang</button>
-        <button class="chip" data-g="2">Gore max</button>
-      </div>
       <button class="mb host" id="goHost">DÉFIER UN POTE</button>
       <div class="jrow">
         <input class="code" id="codeIn" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text">
         <button class="mb join" id="goJoin">REJOINDRE</button>
       </div>
-      <button class="link" id="goHelp">Comment jouer ?</button>
+      <div class="links"><button class="link" id="goHelp">Comment jouer ?</button><button class="link" id="goOpts">Options</button></div>
       <p class="note" id="netNote"></p>
     </div>
   </div>
@@ -80,7 +75,9 @@
       <div><span class="k" style="background:#b07a00">KI</span>barre en 3 crans (coups, tacles, passes). <b>Tap = BOULE DE KI</b> (1 cran). <b>Maintiens = tu charges ton ki</b> (immobile, gare aux coups !). Barre pleine + maintiens encore = <b>MÉGA RAYON</b> qui pulvérise tout sur sa ligne. Avec ballon et barre pleine : <b>ULTIME</b>, unique à chaque joueur (trajectoire, effet, pose — voir la composition).</div>
       <div><b>Règles</b> : aucune. Match de 3 min, <b>but en or</b> en cas d'égalité. Tacler le gardien ? Autorisé.</div>
       <div><b>Physique</b> : un joueur éjecté devient un boulet. Il <b>renverse tout ce qu'il percute</b> (même ses coéquipiers), <b>s'écrase contre les murets</b> et peut finir <b>au fond des filets</b>. Enchaîne les coups pour faire grimper le <b>combo</b> (Sauvage, Brutal, Barbare, Inhumain…).</div>
-      <div><b>Sur PC</b> : ZQSD / flèches, <span class="k" style="background:#444">Espace</span>tir, <span class="k" style="background:#444">K</span>tacle, <span class="k" style="background:#444">Maj</span>sprint, <span class="k" style="background:#444">E</span>spécial.</div>
+      <div><b>Sur PC</b> : ZQSD / flèches, <span class="k" style="background:#444">Espace</span>tir, <span class="k" style="background:#444">K</span>tacle, <span class="k" style="background:#444">Maj</span>sprint, <span class="k" style="background:#444">E</span>spécial, <span class="k" style="background:#444">Échap</span>pause, <span class="k" style="background:#444">F</span>plein écran.</div>
+      <div><b>Manette</b> : stick gauche, <span class="k" style="background:#2f7d32">A</span>tir/frappe, <span class="k" style="background:#b32424">B</span>/<span class="k" style="background:#2456b3">X</span>tacle, <span class="k" style="background:#b39a24">Y</span>spécial, <span class="k" style="background:#444">RB/RT</span>sprint, <span class="k" style="background:#444">Start</span>pause. Elle vibre à chaque coup.</div>
+      <div><b>Lire le jeu</b> : en chargeant un tir, un <b>cône</b> et un <b>réticule</b> montrent où part le ballon. Avec le ballon, le coéquipier cerclé recevra ta passe. Sans ballon, les <b>crochets rouges</b> désignent celui que tu vas frapper. Un <b>« ! » rouge</b> au-dessus de toi : un tacle ou du ki arrive, <b>esquive</b> (TACLE avec le ballon) au dernier moment pour une <b>ESQUIVE PARFAITE</b> (ralenti + ki).</div>
       <div><b>En ligne</b> : « Défier un pote » donne un code. Ton pote le tape (ou ouvre ton lien) et c'est parti.</div>
     </div>
     <div class="row" style="margin-top:12px"><button class="mb solo" id="helpOk" style="width:auto;padding:0 26px">COMPRIS</button></div>
@@ -94,10 +91,29 @@
       <button class="mb solo" id="pResume">REPRENDRE</button>
       <button class="mb host" id="pRestart">RECOMMENCER</button>
       <button class="mb ghost" id="pHelp">COMMENT JOUER</button>
+      <button class="mb ghost" id="pOpts">OPTIONS</button>
       <button class="mb ghost" id="pQuit">QUITTER</button>
     </div>
   </div>
 </div>
+
+<div id="opts" class="scr">
+  <div class="card optc">
+    <h2>OPTIONS</h2>
+    <div class="optg">
+      <span>GRAPHISMES</span><div class="seg" data-k="gfx"><button data-v="auto">Auto</button><button data-v="ultra">Ultra</button><button data-v="high">Haute</button><button data-v="perf">Perf.</button></div>
+      <span>MUSIQUE</span><input type="range" min="0" max="100" step="5" data-k="music">
+      <span>EFFETS</span><input type="range" min="0" max="100" step="5" data-k="sfx">
+      <span>SANG</span><div class="seg" data-k="gore"><button data-v="0">Sans</button><button data-v="1">Sang</button><button data-v="2">Gore max</button></div>
+      <span>VIBRATIONS</span><div class="seg" data-k="vib"><button data-v="1">Oui</button><button data-v="0">Non</button></div>
+      <span>CAMÉRA</span><div class="seg" data-k="shake"><button data-v="1">Secousses</button><button data-v="0">Réduites</button></div>
+    </div>
+    <p class="note" id="optGfx"></p>
+    <div class="row"><button class="mb solo" id="optOk" style="width:auto;padding:0 30px">OK</button></div>
+  </div>
+</div>
+
+<div id="vs"><div class="vsl"><div class="vsn"></div><div class="vsp"></div></div><div class="vsr"><div class="vsn"></div><div class="vsp"></div></div><div class="vsx">VS</div><div class="vsf"></div></div>
 
 <div id="end" class="scr">
   <div class="card">

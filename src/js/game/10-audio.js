@@ -9,7 +9,9 @@
         const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 5; comp.connect(c.destination);
         // filtre maître : au ralenti, le monde devient sourd (le son « sous l'eau » des grosses collisions)
         const lp = this.lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = 0.9; lp.connect(comp);
-        this.out = c.createGain(); this.out.gain.value = 0.8; this.out.connect(lp);
+        this.out = c.createGain(); this.out.gain.value = 0.8 * OPT.sfx; this.out.connect(lp);
+        // bus musique : passe par le filtre maître (étouffée au ralenti) mais pas par la réverbération ; « ducking » sur les gros chocs
+        this.mus = c.createGain(); this.mus.gain.value = 0; this.musD = c.createGain(); this.musD.gain.value = 1; this.mus.connect(this.musD); this.musD.connect(lp);
         // réverbération du stade : les impacts résonnent sous le toit
         try {
           const rv = c.createConvolver(), L = (c.sampleRate * 2.2) | 0, ir = c.createBuffer(2, L, c.sampleRate);
@@ -23,6 +25,7 @@
         const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 0.5;
         const g = c.createGain(); g.gain.value = 0; src.connect(bp); bp.connect(g); g.connect(this.out); src.start();
         this.crowdG = g;
+        MUS.mode = app.mode === 'menu' ? 'menu' : 'match'; this.vol(); MUS.start();
       } catch (e) { this.c = null; }
     },
     ok() { return this.c && this.c.state === 'running'; },
@@ -95,6 +98,47 @@
       g.linearRampToValueAtTime(this.base + 0.12 * level, t + 1.6);
       g.linearRampToValueAtTime(this.base, t + 3.4);
     },
+    vol() { // volumes réglables dans les options
+      if (!this.c) return;
+      const t = this.c.currentTime;
+      this.out.gain.setTargetAtTime(0.8 * OPT.sfx, t, 0.05);
+      this.mus.gain.setTargetAtTime(0.5 * OPT.music * (MUS.mode === 'match' ? 0.62 : 1), t, 0.2);
+    },
+    duck(a, d) { // la musique s'efface un instant sous les gros impacts
+      if (!this.ok() || !this.musD) return;
+      const g = this.musD.gain, t = this.c.currentTime;
+      g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(1 - a, t + 0.03); g.linearRampToValueAtTime(1, t + 0.03 + (d || 0.5));
+    },
+    ui(k) { // sons d'interface
+      if (!this.ok()) return;
+      if (k === 'hover') this.osc('triangle', 1700, 1500, 0.035, 0.035);
+      else if (k === 'ok') { this.osc('square', 520, 780, 0.08, 0.07); this.osc('sine', 160, 60, 0.14, 0.4); this.nz('bandpass', 1200, 3000, 0.12, 0.12, 1.5); }
+      else if (k === 'back') { this.osc('square', 620, 360, 0.09, 0.06); this.nz('lowpass', 900, 300, 0.08, 0.1); }
+      else if (k === 'pick') { this.osc('sine', 120, 50, 0.16, 0.6); this.nz('bandpass', 700, 2600, 0.14, 0.18, 1.2); this.osc('triangle', 880, 1320, 0.07, 0.05, 0.03); }
+    },
+    fanfare(win) { // jingle de fin de match
+      if (!this.ok()) return;
+      const c = this.c, t0 = c.currentTime + 0.05;
+      const brass = (f, st, d, v) => { const o = c.createOscillator(), o2 = c.createOscillator(), f2 = c.createBiquadFilter(), g = c.createGain(), t = t0 + st;
+        o.type = 'sawtooth'; o2.type = 'sawtooth'; o.frequency.value = f; o2.frequency.value = f * 1.006; f2.type = 'lowpass'; f2.Q.value = 2;
+        f2.frequency.setValueAtTime(400, t); f2.frequency.exponentialRampToValueAtTime(2400, t + 0.06); f2.frequency.exponentialRampToValueAtTime(900, t + d);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.02); g.gain.setValueAtTime(v, t + d * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(f2); o2.connect(f2); f2.connect(g); g.connect(this.out); o.start(t); o2.start(t); o.stop(t + d + 0.05); o2.stop(t + d + 0.05); };
+      if (win) { // victoire : montée de cuivres, foule en délire
+        [[[164.8, 207.7, 246.9], 0, 0.18], [[164.8, 207.7, 246.9], 0.2, 0.18], [[220, 277.2, 329.6], 0.42, 0.22], [[246.9, 311.1, 370], 0.68, 0.22], [[329.6, 415.3, 493.9], 0.95, 1.4]]
+          .forEach(([ch, st, d]) => ch.forEach(f => brass(f, st, d, 0.07)));
+        this.boom(0.9); this.roar(1); this.horn();
+        for (let k = 0; k < 5; k++) this.nz('bandpass', 1400, 1400, 0.05, 0.25, 1.2, 1.2 + k * 0.22);
+      } else { // défaite : accord mineur qui s'effondre, la foule soupire
+        [[[110, 130.8, 164.8], 0, 0.7], [[103.8, 123.5, 155.6], 0.75, 0.7], [[82.4, 98, 123.5], 1.5, 1.6]].forEach(([ch, st, d]) => ch.forEach(f => brass(f, st, d, 0.06)));
+        this.ooh(0.6);
+      }
+    },
+    chant() { // les supporters tapent dans leurs mains : « CLAP CLAP · CLAP CLAP CLAP »
+      if (!this.ok()) return;
+      const b = 60 / 124, pat = [0, 0.5, 1.5, 2, 2.5];
+      for (const st of pat) for (let k = 0; k < 4; k++) this.nz('bandpass', 1100 + R() * 900, 0, 0.04, 0.09, 1.4, st * b + R() * 0.03);
+    },
     ambient(on) {
       this.base = on ? 0.07 : 0;
       if (!this.ok() || !this.crowdG) return;
@@ -161,5 +205,9 @@
     }
   };
 
-  function vibe(p) { if (app.mode === 'menu' || !navigator.vibrate) return; try { navigator.vibrate(p); } catch (e) { /* rien */ } }
+  function vibe(p) {
+    if (app.mode === 'menu' || !OPT.vib) return;
+    if (navigator.vibrate) { try { navigator.vibrate(p); } catch (e) { /* rien */ } }
+    padRumble(p); // la manette vibre aussi
+  }
 

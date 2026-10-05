@@ -1,5 +1,6 @@
   /* =============== BOUCLE =============== */
   const STEP = 1 / 60;
+  let chantT = 12;
   let last = performance.now(), acc = 0, lastLbl = '', lastP = -1, lastS = -1;
   const demoV = makeView(), hostV = makeView();
 
@@ -100,7 +101,12 @@
     perfWatch(dt);
     lastV = V; animRealDt = dt;
     myCtrl = app.mode !== 'menu' && !app.drafting ? app.myTeam * 4 + V.ctrl[app.myTeam] : -1;
-    AU.slow(app.mode === 'menu' || app.drafting ? 1 : (V.ts || 1));
+    AU.slow(app.mode === 'menu' || app.drafting ? 1 : app.paused ? 0.3 : (V.ts || 1));
+    if (app.mode !== 'menu' && !app.drafting) { // la musique monte avec l'enjeu ; le public chante de temps en temps
+      MUS.inten = V.golden ? 1 : V.clock < 30 ? 0.85 : V.clock < 60 ? 0.6 : 0.35;
+      if (V.phase === 'end' && MUS.mode === 'match') MUS.set('off');
+      if (V.phase === 'play' && !app.paused) { chantT -= dt; if (chantT <= 0) { chantT = rnd2(22, 40); AU.chant(); } }
+    }
     if (myCtrl >= 0 && V.phase === 'play' && !app.paused) { // ton joueur est en sang : son cœur cogne
       const dm = V.players[myCtrl].dmg || 0;
       if (dm >= 6.5) { hbT -= dt; if (hbT <= 0) { hbT = dm >= 8.5 ? 0.62 : 0.85; AU.heart(); } } else hbT = 0;

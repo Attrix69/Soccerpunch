@@ -24,7 +24,7 @@
     else if (k === 'D') { if (on && !LI.d) LI.dN++; LI.d = on; }
     if (on) { AU.init(); vibeTap(); }
   }
-  function vibeTap() { if (navigator.vibrate && app.mode !== 'menu') try { navigator.vibrate(8); } catch (e) { /* rien */ } }
+  function vibeTap() { if (navigator.vibrate && app.mode !== 'menu' && OPT.vib) try { navigator.vibrate(8); } catch (e) { /* rien */ } }
   function setJoyPos() {
     joyEl.style.left = joy.ox + 'px'; joyEl.style.top = joy.oy + 'px';
     knobEl.style.transform = `translate(${joy.vx * joy.R}px,${joy.vy * joy.R}px)`;
@@ -76,6 +76,7 @@
   addEventListener('keydown', e => {
     if (e.target && e.target.tagName === 'INPUT') { if (e.code === 'Enter') $('goJoin').click(); return; }
     if (e.code === 'Escape') { if (app.mode !== 'menu') togglePause(); return; }
+    if (e.code === 'KeyF' && !e.repeat) { toggleFS(); return; }
     if (keys.has(e.code)) { e.preventDefault(); return; }
     keys.add(e.code);
     const k = KMAP[e.code]; if (k && app.mode !== 'menu') { press(k, true); e.preventDefault(); }
@@ -86,6 +87,29 @@
     const k = KMAP[e.code]; if (k) press(k, false);
   });
   addEventListener('blur', () => { keys.clear(); for (const k of ['A', 'B', 'C', 'D']) press(k, false); resetJoy(); ptr.clear(); });
+  function toggleFS() { const d = document; try { if (d.fullscreenElement) d.exitFullscreen(); else d.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch (e) { /* refusé */ } }
+  /* ---------- MANETTE (Gamepad API) : stick, boutons, vibrations ---------- */
+  const GP = { idx: -1, prev: {}, pad: null };
+  addEventListener('gamepadconnected', e => { GP.idx = e.gamepad.index; toast('Manette connectée : prête à cogner'); });
+  addEventListener('gamepaddisconnected', e => { if (e.gamepad.index !== GP.idx) return; GP.idx = -1; GP.pad = null; for (const k of ['A', 'B', 'C', 'D']) if (GP.prev[k]) press(k, false); GP.prev = {}; });
+  function pollPad() {
+    if (GP.idx < 0 || !navigator.getGamepads) return null;
+    const gp = navigator.getGamepads()[GP.idx]; if (!gp) return null; GP.pad = gp;
+    const b = i => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5));
+    const live = app.mode !== 'menu' && !app.drafting;
+    const st = { A: b(0), B: b(1) || b(2), C: b(4) || b(5) || b(7), D: b(3) || b(6) };
+    for (const k of ['A', 'B', 'C', 'D']) if (st[k] !== !!GP.prev[k]) { if (live || !st[k]) press(k, st[k]); GP.prev[k] = st[k]; }
+    const start = b(9); if (start && !GP.prev.S && app.mode !== 'menu') togglePause(); GP.prev.S = start;
+    let x = gp.axes[0] || 0, y = gp.axes[1] || 0;
+    if (b(14)) x = -1; if (b(15)) x = 1; if (b(12)) y = -1; if (b(13)) y = 1; // croix directionnelle
+    const m = len(x, y); if (m < 0.18) return [0, 0];
+    const mm = Math.min(1, (m - 0.18) / 0.82); return [x / m * mm, y / m * mm];
+  }
+  function padRumble(p) {
+    const gp = GP.pad; if (!gp || !gp.vibrationActuator || !OPT.vib) return;
+    const d = Array.isArray(p) ? p.reduce((a, b) => a + b, 0) : p;
+    try { gp.vibrationActuator.playEffect('dual-rumble', { duration: Math.min(450, d), strongMagnitude: Math.min(1, d / 220), weakMagnitude: 0.7 }); } catch (e) { /* pas de vibration */ }
+  }
   function readMove() {
     let kx = 0, ky = 0;
     if (keys.has('KeyA') || keys.has('ArrowLeft')) kx -= 1;
@@ -93,6 +117,7 @@
     if (keys.has('KeyW') || keys.has('ArrowUp')) ky -= 1;
     if (keys.has('KeyS') || keys.has('ArrowDown')) ky += 1;
     let mx = joy.vx, my = joy.vy;
+    const g = pollPad(); if (g && (g[0] || g[1])) { mx = g[0]; my = g[1]; }
     if (kx || ky) { const m = len(kx, ky); mx = kx / m; my = ky / m; }
     LI.mx = mx * cam.flip; LI.my = my;
     return LI;
