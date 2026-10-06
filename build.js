@@ -12,8 +12,14 @@ function include(spec) {
   const dir = m[1] || '', re = new RegExp('^' + m[2].replace(/[.]/g, '\\.').replace(/\*/g, '.*') + '$');
   return fs.readdirSync(path.join(SRC, dir)).filter(f => re.test(f)).sort().map(f => dir + f);
 }
+function sounds(dir) { // @@sfx dir : les .mp3 de src/dir deviennent var SFXD = { nom: base64 }
+  const files = fs.readdirSync(path.join(SRC, dir)).filter(f => f.endsWith('.mp3')).sort();
+  return 'var SFXD = {\n' + files.map(f => JSON.stringify(f.slice(0, -4)) + ':"' + fs.readFileSync(path.join(SRC, dir, f)).toString('base64') + '"').join(',\n') + '\n};';
+}
 function expand(text) {
   return text.split('\n').map(line => {
+    const s = line.match(/^@@sfx (\S+)$/);
+    if (s) return sounds(s[1]);
     const m = line.match(/^@@include (\S+)$/);
     if (!m) return line;
     return include(m[1]).map(f => {

@@ -105,7 +105,7 @@
     if (app.mode !== 'menu' && !app.drafting) { // la musique monte avec l'enjeu ; le public chante de temps en temps
       MUS.inten = V.golden ? 1 : V.clock < 30 ? 0.85 : V.clock < 60 ? 0.6 : 0.35;
       if (V.phase === 'end' && MUS.mode === 'match') MUS.set('off');
-      if (V.phase === 'play' && !V.golden && V.clock <= 5.2 && V.clock > 0) { const s5 = Math.ceil(V.clock); if (s5 !== lastTick) { lastTick = s5; AU.beep(s5 <= 1 ? 1320 : 880, 0.09); AU.kick(0.35); shake(2); } }
+      if (V.phase === 'play' && !V.golden && V.clock <= 5.2 && V.clock > 0) { const s5 = Math.ceil(V.clock); if (s5 !== lastTick) { lastTick = s5; AU.beep(s5 <= 1 ? 1320 : 880, 0.09); AU.kick(0.35); AU.call(String(s5)); shake(2); } }
       if (V.phase === 'play' && !app.paused) { chantT -= dt; if (chantT <= 0) { chantT = rnd2(22, 40); AU.chant(); } }
     }
     if (myCtrl >= 0 && V.phase === 'play' && !app.paused) { // ton joueur est en sang : son cœur cogne
@@ -119,7 +119,7 @@
       updButtons(V);
       if (V.phase === 'countdown') {
         const n = Math.ceil(V.phaseT - 0.2);
-        if (n !== app.lastCount && n >= 1 && n <= 3) { app.lastCount = n; AU.beep(660, 0.14); }
+        if (n !== app.lastCount && n >= 1 && n <= 3) { app.lastCount = n; AU.beep(660, 0.14); AU.call(String(n)); }
       }
       if (V.phase === 'end') {
         if (!app.endShown) { app.endT += dt; if (app.endT > 1.6) { app.endShown = true; showEnd(V); } }

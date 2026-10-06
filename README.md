@@ -17,6 +17,25 @@ Pour jouer en ligne, héberge le fichier (GitHub Pages par exemple) et envoie le
 | Pause | ☰ | Échap | Start |
 | Plein écran | | F | |
 
+## Bruitages enregistrés et annonceur
+
+55 vrais sons (domaine public, CC0) remplacent ou épaississent la synthèse là où elle sonnait « jeu vidéo » :
+coups de poing légers et lourds, impacts sur le corps, corps qui s'écrasent sur la pelouse, frappes de balle,
+poteaux qui sonnent, coups dans le vide, sons d'interface. Chaque son a plusieurs variantes jouées au hasard,
+légèrement désaccordées, et plus graves au ralenti.
+
+**Annonceur** façon jeu de combat : « 3, 2, 1… FIGHT! » au coup d'envoi, « COMBO! », « MULTI KILL! » sur un
+carnage, « SUDDEN DEATH! » au but en or, compte à rebours des 5 dernières secondes, « YOU WIN! »,
+« FLAWLESS VICTORY! » (victoire sans encaisser) ou « YOU LOSE! ». Désactivable dans les Options.
+
+Tout reste dans `index.html` (environ 180 Ko de MP3 mono embarqués, décodés au premier geste ; tant qu'un son
+n'est pas prêt, la synthèse prend le relais). La foule, le sifflet, la musique et les ultimes restent synthétisés.
+
+Sons (CC0) : [Kenney](https://kenney.nl) (Impact Sounds, Interface Sounds, UI Audio, Voiceover Pack: Fighter),
+OpenGameArt ([37 hits/punches](https://opengameart.org/content/37-hitspunches),
+[Battle sound effects](https://opengameart.org/content/battle-sound-effects)), récupérés via l'index
+[open-game-sfx-index](https://github.com/Mcamento8/open-game-sfx-index), puis coupés, normalisés et encodés.
+
 ## Version 3.0 : refonte « console »
 
 ### Rendu
@@ -79,7 +98,8 @@ node build.js --check  # vérifie que index.html est à jour
 | `src/js/sim.js` | simulation pure (règles, physique, IA), sans DOM, partagée hôte/invité |
 | `src/js/post.js` | pipeline de post-traitement WebGL |
 | `src/js/game/05-options.js` | réglages, niveaux graphiques |
-| `src/js/game/10-audio.js`, `12-music.js` | effets sonores, musique procédurale |
+| `src/js/game/10-audio.js`, `12-music.js` | effets sonores (synthèse + sons enregistrés, annonceur), musique procédurale |
+| `src/sfx/*.mp3` | sons enregistrés, embarqués en base64 par `build.js` (`@@sfx`) ; `nom-0`, `nom-1`… = variantes |
 | `src/js/game/20-input.js` | tactile, clavier, manette |
 | `src/js/game/30-stage.js` | stade pré-rendu, couches de canvas |
 | `src/js/game/35-fx.js` | particules, sang, gore, sang sur l'objectif |

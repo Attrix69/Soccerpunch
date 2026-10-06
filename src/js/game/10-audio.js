@@ -1,6 +1,6 @@
-  /* =============== SON (Web Audio, 100 % synthétisé) =============== */
+  /* =============== SON (Web Audio : synthèse + bruitages enregistrés) =============== */
   const AU = {
-    c: null, out: null, noise: null, crowdG: null, base: 0,
+    c: null, out: null, noise: null, crowdG: null, base: 0, smp: {},
     init() {
       if (this.c) { if (this.c.state === 'suspended') this.c.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -26,9 +26,39 @@
         const g = c.createGain(); g.gain.value = 0; src.connect(bp); bp.connect(g); g.connect(this.out); src.start();
         this.crowdG = g;
         MUS.mode = app.mode === 'menu' ? 'menu' : 'match'; this.vol(); MUS.start();
+        this.loadSmp();
       } catch (e) { this.c = null; }
     },
     ok() { return this.c && this.c.state === 'running'; },
+    loadSmp() { // décodage asynchrone : tant qu'un son n'est pas prêt, la synthèse prend le relais
+      if (typeof SFXD === 'undefined') return;
+      for (const name in SFXD) {
+        const bin = atob(SFXD[name]), u = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        const key = name.replace(/-\d+$/, '');
+        const done = b => { // on saute le silence que l'encodeur MP3 laisse en tête
+          const d = b.getChannelData(0); let pk = 0, i = 0;
+          for (let j = 0; j < d.length; j++) pk = Math.max(pk, Math.abs(d[j]));
+          while (i < d.length && Math.abs(d[i]) < pk * 0.02) i++;
+          (this.smp[key] = this.smp[key] || []).push({ b, o: Math.max(0, i / b.sampleRate - 0.0005) });
+        };
+        try { const p = this.c.decodeAudioData(u.buffer, done, () => {}); if (p && p.catch) p.catch(() => {}); } catch (e) { /* son ignoré */ }
+      }
+    },
+    play(key, vol, rate, delay) { // rate omis : variation aléatoire, et plus grave au ralenti
+      const L = this.smp[key]; if (!L || !this.ok()) return false;
+      let k = (R() * L.length) | 0; if (L.length > 1 && k === L.last) k = (k + 1) % L.length; L.last = k;
+      const c = this.c, s = c.createBufferSource(), g = c.createGain();
+      s.buffer = L[k].b; s.playbackRate.value = rate || (0.93 + R() * 0.14) * (this.sl < 1 ? 0.7 + 0.3 * this.sl : 1);
+      g.gain.value = vol; s.connect(g); g.connect(this.out); s.start(c.currentTime + (delay || 0), L[k].o);
+      return true;
+    },
+    lastCall: 0,
+    call(k, delay) { // l'annonceur du stade : « FIGHT! », « COMBO! », « YOU WIN! »…
+      if (!OPT.voice || !this.ok() || !this.smp['vo_' + k]) return;
+      const now = this.c.currentTime; if (now - this.lastCall < 0.6) return; this.lastCall = now;
+      this.play('vo_' + k, 0.95, 1, delay); this.duck(0.45, 0.9);
+    },
     ult(k) { // signature sonore de chaque ULTIME
       const o = (t, a, b, d, v, dl) => this.osc(t, a, b, d, v, dl), z = (t, a, b, d, v, q, dl) => this.nz(t, a, b, d, v, q, dl);
       switch (k) {
@@ -64,16 +94,20 @@
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       s.connect(f); f.connect(g); g.connect(this.out); s.start(t, R() * 1.5); s.stop(t + dur + 0.05);
     },
-    kick(p) { p = clamp(p, 0.2, 1.2); this.osc('sine', 150, 38, 0.17, 0.75 * p); this.nz('bandpass', 1800, 900, 0.06, 0.35 * p, 1.2); },
+    kick(p) {
+      p = clamp(p, 0.2, 1.2);
+      if (this.play('kk', 0.8 * p)) { this.play('tap', 0.3 * p, 0.9 + p * 0.3); this.osc('sine', 150, 38, 0.12, 0.3 * p); this.nz('bandpass', 1800, 900, 0.05, 0.2 * p, 1.2); return; }
+      this.osc('sine', 150, 38, 0.17, 0.75 * p); this.nz('bandpass', 1800, 900, 0.06, 0.35 * p, 1.2);
+    },
     boom(p) { p = clamp(p, 0.3, 1.3); this.osc('sine', 95, 24, 0.55, 1.0 * p); this.osc('triangle', 60, 30, 0.35, 0.4 * p); this.nz('lowpass', 1400, 120, 0.45, 0.7 * p, 0.7); },
     crunch(p) { this.nz('bandpass', 2400, 700, 0.07, 0.55 * p, 2.5); this.nz('bandpass', 1600, 500, 0.06, 0.45 * p, 3, 0.035); this.nz('highpass', 3500, 3500, 0.03, 0.25 * p, 1, 0.012); },
     bonk() { this.osc('triangle', 760, 170, 0.15, 0.22); },
-    swish(p) { p = p || 1; this.nz('bandpass', 600, 3400, 0.24, 0.24 * p, 1.4); },
+    swish(p) { p = p || 1; if (!this.play('sw', 0.4 * p)) this.nz('bandpass', 600, 3400, 0.24, 0.24 * p, 1.4); },
     whoosh(big) { this.nz('bandpass', 260, 4500, big ? 0.9 : 0.6, 0.42, 0.9); this.osc('sawtooth', 60, big ? 700 : 480, big ? 0.85 : 0.6, 0.07); },
-    post() { this.osc('sine', 1320, 1290, 0.8, 0.28); this.osc('sine', 2650, 2600, 0.55, 0.1); this.osc('triangle', 660, 650, 0.35, 0.14); },
+    post() { const s = this.play('post', 0.85) ? 0.6 : 1; this.osc('sine', 1320, 1290, 0.8, 0.28 * s); this.osc('sine', 2650, 2600, 0.55, 0.1 * s); this.osc('triangle', 660, 650, 0.35, 0.14 * s); },
     wall(v) { const p = clamp(v / 1200, 0.15, 1); this.osc('sine', 150, 60, 0.11, 0.45 * p); this.nz('lowpass', 700, 300, 0.09, 0.2 * p); },
     grab() { this.osc('sine', 320, 120, 0.12, 0.35); this.nz('lowpass', 1300, 400, 0.08, 0.22); },
-    click() { this.osc('square', 900, 700, 0.05, 0.06); },
+    click() { if (!this.play('uiclk', 0.45)) this.osc('square', 900, 700, 0.05, 0.06); },
     beep(f, d) { this.osc('square', f, f, d || 0.12, 0.11); },
     whistle(kind) {
       if (!this.ok()) return;
@@ -111,10 +145,10 @@
     },
     ui(k) { // sons d'interface
       if (!this.ok()) return;
-      if (k === 'hover') this.osc('triangle', 1700, 1500, 0.035, 0.035);
-      else if (k === 'ok') { this.osc('square', 520, 780, 0.08, 0.07); this.osc('sine', 160, 60, 0.14, 0.4); this.nz('bandpass', 1200, 3000, 0.12, 0.12, 1.5); }
-      else if (k === 'back') { this.osc('square', 620, 360, 0.09, 0.06); this.nz('lowpass', 900, 300, 0.08, 0.1); }
-      else if (k === 'pick') { this.osc('sine', 120, 50, 0.16, 0.6); this.nz('bandpass', 700, 2600, 0.14, 0.18, 1.2); this.osc('triangle', 880, 1320, 0.07, 0.05, 0.03); }
+      if (k === 'hover') { if (!this.play('uihov', 0.22)) this.osc('triangle', 1700, 1500, 0.035, 0.035); }
+      else if (k === 'ok') { if (!this.play('uiok', 0.5)) this.osc('square', 520, 780, 0.08, 0.07); this.osc('sine', 160, 60, 0.14, 0.4); this.nz('bandpass', 1200, 3000, 0.12, 0.12, 1.5); }
+      else if (k === 'back') { if (!this.play('uiback', 0.5)) { this.osc('square', 620, 360, 0.09, 0.06); this.nz('lowpass', 900, 300, 0.08, 0.1); } }
+      else if (k === 'pick') { this.osc('sine', 120, 50, 0.16, 0.6); this.nz('bandpass', 700, 2600, 0.14, 0.18, 1.2); if (!this.play('uipick', 0.55)) this.osc('triangle', 880, 1320, 0.07, 0.05, 0.03); }
     },
     fanfare(win) { // jingle de fin de match
       if (!this.ok()) return;
@@ -145,14 +179,21 @@
       const g = this.crowdG.gain, t = this.c.currentTime;
       g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(this.base, t + 0.8);
     },
-    punch(n) { this.osc('sine', 130 - n * 15, 40, 0.12 + n * 0.03, 0.75); this.nz('bandpass', 1500, 500, 0.06, 0.5, 2); this.nz('lowpass', 900, 200, 0.1, 0.35 * n); },
+    punch(n) {
+      if (this.play(n >= 2 ? 'ph' : 'pm', 0.7 + n * 0.1)) { this.osc('sine', 130 - n * 15, 40, 0.12 + n * 0.03, 0.4); return; }
+      this.osc('sine', 130 - n * 15, 40, 0.12 + n * 0.03, 0.75); this.nz('bandpass', 1500, 500, 0.06, 0.5, 2); this.nz('lowpass', 900, 200, 0.1, 0.35 * n);
+    },
     kiball() { this.osc('sawtooth', 220, 900, 0.18, 0.08); this.osc('sine', 1200, 300, 0.25, 0.18); this.nz('bandpass', 3000, 900, 0.2, 0.12, 2); },
     charge() { this.osc('sawtooth', 70, 160, 1.4, 0.07); this.osc('sine', 140, 420, 1.4, 0.12); this.nz('bandpass', 400, 2000, 1.4, 0.12, 1.5); },
     beam() { this.osc('sawtooth', 90, 55, 0.9, 0.16); this.osc('square', 180, 120, 0.8, 0.05); this.nz('bandpass', 900, 2600, 0.9, 0.5, 0.7); this.boom(1); },
     horn() { [55, 82.5, 110, 165].forEach((f, i) => this.osc('sawtooth', f, f * 1.01, 1.4, 0.08, i * 0.02)); },
     goal() { this.roar(1); this.horn(); this.boom(0.8); },
     /* ----- la chair et les os ----- */
-    flesh(p) { p = clamp(p, 0.2, 1.4); this.nz('bandpass', 1150, 380, 0.07, 0.6 * p, 1.3); this.nz('lowpass', 520, 140, 0.13, 0.55 * p, 0.8); },
+    flesh(p) {
+      p = clamp(p, 0.2, 1.4);
+      if (!this.play('hit', 0.4 * p)) this.nz('bandpass', 1150, 380, 0.07, 0.6 * p, 1.3);
+      this.nz('lowpass', 520, 140, 0.13, 0.55 * p, 0.8);
+    },
     bone(p) { // craquement d'os : une salve de clics secs
       if (!this.ok()) return; p = clamp(p, 0.2, 1.3);
       let d = 0; const n = 3 + ((R() * 3) | 0);
@@ -161,7 +202,8 @@
     },
     thud(p) { // un corps qui s'écrase sur la pelouse
       p = clamp(p, 0.2, 1.3);
-      this.osc('sine', 88, 30, 0.34, 0.95 * p); this.nz('lowpass', 460, 80, 0.36, 0.6 * p, 0.8); this.nz('bandpass', 2400, 800, 0.08, 0.16 * p, 1.4, 0.008);
+      const s = this.play('th', 0.85 * p) ? 0.5 : 1;
+      this.osc('sine', 88, 30, 0.34, 0.95 * p * s); this.nz('lowpass', 460, 80, 0.36, 0.6 * p * s, 0.8); this.nz('bandpass', 2400, 800, 0.08, 0.16 * p, 1.4, 0.008);
     },
     slam(p) { this.thud(p); this.osc('triangle', 140, 60, 0.3, 0.5 * p); this.nz('bandpass', 700, 300, 0.4, 0.5 * p, 3, 0.01); this.osc('sine', 610, 590, 0.6, 0.06 * p, 0.02); }, // béton + vibration du muret
     lastV: 0,
