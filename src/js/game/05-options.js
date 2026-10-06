@@ -1,6 +1,6 @@
   /* =============== OPTIONS & NIVEAUX GRAPHIQUES =============== */
   // réglages du joueur, mémorisés dans le navigateur
-  const OPT = { gfx: 'auto', music: 0.55, sfx: 1, vib: 1, shake: 1 };
+  const OPT = { gfx: 'auto', music: 0.55, sfx: 1, vib: 1, shake: 1, voice: 1 };
   try { Object.assign(OPT, JSON.parse(localStorage.getItem('tf_opts') || '{}')); } catch (e) { /* réglages par défaut */ }
   function saveOpts() { try { localStorage.setItem('tf_opts', JSON.stringify(OPT)); } catch (e) { /* stockage indisponible */ } }
   // ULTRA : pipeline complet · HAUTE : bloom simple, définition réduite · PERF : rendu 2D direct

@@ -20,7 +20,7 @@
     const now = performance.now();
     CMB.n = now - CMB.t < 1900 ? CMB.n + 1 : 1; CMB.t = now; CMB.pop = now;
     const tr = tierOf(CMB.n);
-    if (tr >= 0 && tr < 5 && (CMB.tier < 0 || tr < CMB.tier)) { AU.beep(520 + (5 - tr) * 140, 0.09); if (tr <= 2) AU.roar(0.5); MUS.boost = Math.min(0.6, MUS.boost + 0.25); }
+    if (tr >= 0 && tr < 5 && (CMB.tier < 0 || tr < CMB.tier)) { AU.beep(520 + (5 - tr) * 140, 0.09); if (tr === 4) AU.call('combo'); if (tr <= 2) AU.roar(0.5); MUS.boost = Math.min(0.6, MUS.boost + 0.25); }
     CMB.tier = tr;
   }
   function regKO(e, big) {
@@ -33,8 +33,8 @@
     const n = KOW.filter(k => k[1] === e.a).length;
     let down = 0; if (lastV) for (let j = 0; j < 4; j++) { const q = e.v * 4 + j; if (q === e.id || lastV.players[q].st === ST.down) down++; }
     const mine = e.a === app.myTeam;
-    if (down >= 3 && now - (CMB.carn || 0) > 4000) { CMB.carn = now; showBanner('CARNAGE !', 'toute l\'équipe au tapis', '#ff1e1e', 1.5, 0.75, 0.3); AU.roar(1); AU.ooh(1.4); if (mine) vibe([60, 30, 60, 30, 150]); }
-    else if (n >= 2) { showBanner(n >= 4 ? 'MASSACRE !' : n === 3 ? 'TRIPLE K.O. !' : 'DOUBLE K.O. !', '', mine ? '#ffd23a' : '#ff6a3a', 1.1, n >= 3 ? 0.68 : 0.58, 0.3); AU.roar(0.6 + n * 0.15); }
+    if (down >= 3 && now - (CMB.carn || 0) > 4000) { CMB.carn = now; showBanner('CARNAGE !', 'toute l\'équipe au tapis', '#ff1e1e', 1.5, 0.75, 0.3); AU.roar(1); AU.ooh(1.4); AU.call('multikill'); if (mine) vibe([60, 30, 60, 30, 150]); }
+    else if (n >= 2) { showBanner(n >= 4 ? 'MASSACRE !' : n === 3 ? 'TRIPLE K.O. !' : 'DOUBLE K.O. !', '', mine ? '#ffd23a' : '#ff6a3a', 1.1, n >= 3 ? 0.68 : 0.58, 0.3); AU.roar(0.6 + n * 0.15); if (n >= 3) AU.call('multikill'); }
   }
   let lastV = null, animRealDt = 0.016, hbT = 0, hypeT = 0;
   function drawFeed() {
@@ -364,10 +364,10 @@
         break;
       }
       case 'whistle': // coup d'envoi : le stade explose
-        if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); AU.boom(0.7); AU.roar(0.7); }
+        if (loud) { AU.whistle(0); showBanner('GO !', '', '#ff2a1e', 0.8); AU.boom(0.7); AU.roar(0.7); AU.call('fight'); }
         if (!demo) { shockAt(W / 2, H / 2, 0, 0.02, 0.6, 0.6); kick(0, 1, 9); flashLight(W / 2, H / 2, 20, '#ffffff', 0.6, 0.9, 0.35); }
         break;
-      case 'golden': if (loud) { AU.whistle(1); showBanner('BUT EN OR', 'le prochain but gagne', '#ffb400', 2.2); AU.roar(0.6); } break;
+      case 'golden': if (loud) { AU.whistle(1); showBanner('BUT EN OR', 'le prochain but gagne', '#ffb400', 2.2); AU.roar(0.6); AU.call('suddendeath', 0.5); } break;
       case 'end': {
         if (loud) { AU.whistle(2); showBanner('TERMINÉ', '', '#f1efe9', 1.8); AU.roar(0.8); }
         if (!demo && lastV) { // la caméra va chercher les vainqueurs

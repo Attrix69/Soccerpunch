@@ -94,7 +94,7 @@
   function showEnd(V) {
     const me = app.myTeam, op = 1 - me, win = V.winner === me;
     $('end').classList.toggle('win', win); $('end').classList.toggle('lose', !win);
-    AU.fanfare(win);
+    AU.fanfare(win); AU.call(!win ? 'youlose' : V.score[op] === 0 ? 'flawlessvictory' : 'youwin', 0.35);
     $('endRes').textContent = win ? (app.mode === 'solo' ? 'VICTOIRE !' : 'T\'AS GAGNÉ !') : (app.mode === 'solo' ? 'DÉFAITE…' : 'T\'AS PERDU…');
     $('endRes').style.color = win ? '#f1efe9' : '#ff2a1e';
     $('endSc').innerHTML = `<span style="color:${TEAMS[me].c1}">${V.score[me]}</span> - <span style="color:${TEAMS[op].c1}">${V.score[op]}</span>`;
@@ -298,7 +298,7 @@
     const k = b.parentElement.dataset.k, v = b.dataset.v;
     if (k === 'gore') { GORE = +v; try { localStorage.setItem('tf_gore', v); } catch (_) { /* rien */ } if (!GORE && stains.length) { stains.length = 0; buildBG(); } if (GORE) AU.splat(); else AU.click(); }
     else if (k === 'gfx') { OPT.gfx = v; gfxAuto = isTouch ? 'high' : 'ultra'; dprCap = 2; applyGfx(); AU.click(); }
-    else { OPT[k] = +v; AU.click(); if (k === 'vib' && OPT.vib) vibe(30); if (k === 'shake' && OPT.shake) shake(10); }
+    else { OPT[k] = +v; AU.click(); if (k === 'vib' && OPT.vib) vibe(30); if (k === 'shake' && OPT.shake) shake(10); if (k === 'voice' && OPT.voice) AU.call('fight'); }
     saveOpts(); optsRender();
   }));
   document.querySelectorAll('#opts input[type=range]').forEach(r => {
